@@ -3,6 +3,8 @@ import {
   Outlet,
   Link,
   createRootRouteWithContext,
+  useNavigate,
+  useRouterState,
   useRouter,
   HeadContent,
   Scripts,
@@ -11,6 +13,9 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { AppHeader } from "@/components/AppHeader";
+import { Toaster } from "@/components/ui/sonner";
+import { store, useAuthSession, getSessionRedirectPath } from "@/lib/edlts-store";
 
 function NotFoundComponent() {
   return (
@@ -115,11 +120,45 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const { currentUser, isHydrated } = useAuthSession();
+  const navigate = useNavigate();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+
+  useEffect(() => {
+    store.hydrate();
+  }, []);
+
+  useEffect(() => {
+    if (!isHydrated) return;
+
+    const target = getSessionRedirectPath(currentUser);
+    const isProtectedPath = ["/dashboard", "/apply", "/queue", "/tracking", "/officer", "/admin"].some(
+      (path) => pathname === path || pathname.startsWith(`${path}/`),
+    );
+
+    if (currentUser && ["/", "/login", "/register"].includes(pathname)) {
+      navigate({ to: target });
+      return;
+    }
+
+    if (!currentUser && isProtectedPath && pathname !== "/login") {
+      navigate({ to: "/login" });
+    }
+  }, [currentUser, isHydrated, navigate, pathname]);
 
   return (
     <QueryClientProvider client={queryClient}>
-      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      <Outlet />
+      <AppShell />
     </QueryClientProvider>
+  );
+}
+
+function AppShell() {
+  return (
+    <div className="min-h-screen bg-background text-foreground">
+      <AppHeader />
+      <Outlet />
+      <Toaster richColors position="top-right" />
+    </div>
   );
 }
