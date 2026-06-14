@@ -1,0 +1,126 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    /* ---------- helpers ---------- */
+
+    function validSaId(id) {
+      return id is string && id.size() == 13 && id.matches('^[0-9]{13}$');
+    }
+
+    function validSaPhone(phone) {
+      return phone is string && phone.matches('^\\+27[6-8][0-9]{8}$');
+    }
+
+    function validUserProfile(data) {
+      return data.keys().hasAll(["fullName", "email", "idNumber", "phone", "role", "createdAt"])
+        && data.fullName is string && data.fullName.size() > 0
+        && data.email is string
+        && data.idNumber is string && validSaId(data.idNumber)
+        && data.phone is string && validSaPhone(data.phone)
+        && data.role in ["applicant", "officer", "admin"]
+        && data.createdAt is int;
+    }
+
+    function isSignedIn()    { return request.auth != null; }
+    function userDoc(uid)    { return get(/databases/$(database)/documents/users/$(uid)).data; }
+    function userExists(uid) { return exists(/databases/$(database)/documents/users/$(uid)); }
+    function hasRole(role)   { return isSignedIn() && userExists(request.auth.uid) && userDoc(request.auth.uid).role == role; }
+    function isAdmin()       { return hasRole('admin'); }
+    function isOfficer()     { return hasRole('officer'); }
+    function isStaff()       { return isAdmin() || isOfficer(); }
+
+    /* ---------- users ---------- */
+
+    match /users/{userId} {
+      // Self-registration: applicant creates own profile after Firebase Auth signup.
+      allow create: if isSignedIn()
+        && request.auth.uid == userId
+        && validUserProfile(request.resource.data)
+        && request.resource.data.email == request.auth.token.email;
+
+      // Read: self or any staff member. (Email-verification gate removed —
+      // the demo signs users in immediately after registration, so requiring
+      // email_verified == true prevents the profile from ever loading.)
+      allow read: if isSignedIn()
+        && (request.auth.uid == userId || isStaff());
+
+
+      // Self-update (cannot change own role); admins can update anyone.
+      allow update: if isSignedIn() && (
+        (request.auth.uid == userId
+          && request.resource.data.role == resource.data.role)
+        || isAdmin()
+      );
+
+      // Only admins delete.
+      allow delete: if isAdmin();
+    }
+
+    /* ---------- applications ---------- */
+
+    match /applications/{appId} {
+      allow create: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid;
+
+      allow read: if isSignedIn()
+        && (resource.data.userId == request.auth.uid || isStaff());
+
+      // Owner can update while not yet in production/collected; staff can always update.
+      allow update: if isSignedIn() && (
+        (resource.data.userId == request.auth.uid
+          && resource.data.status in ["draft", "submitted", "booked"])
+        || isStaff()
+      );
+
+      allow delete: if isAdmin();
+    }
+
+    /* ---------- audit_logs (append-only) ---------- */
+
+    match /audit_logs/{logId} {
+      allow read: if isAdmin();
+      allow create: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    /* ---------- payments (server-managed; client read-only) ---------- */
+
+    match /payments/{paymentId} {
+      allow read: if isSignedIn()
+        && (resource.data.userId == request.auth.uid || isStaff());
+      // Client may create the pending intent; ITN webhook updates via service account.
+      allow create: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.status == 'pending';
+      allow update, delete: if isAdmin();
+    }
+
+    /* ---------- licences ---------- */
+
+    match /licences/{licenceId} {
+      allow read: if isSignedIn()
+        && (resource.data.userId == request.auth.uid || isStaff());
+      allow create, update: if isStaff();
+      allow delete: if isAdmin();
+    }
+
+    /* ---------- queues ---------- */
+
+    match /queues/{centreId}/entries/{entryId} {
+      allow read: if isSignedIn()
+        && (resource.data.userId == request.auth.uid || isStaff());
+      allow create: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isStaff();
+    }
+
+    /* ---------- notifications ---------- */
+
+    match /notifications/{notifId} {
+      allow read: if isSignedIn()
+        && (resource.data.userId == request.auth.uid || isAdmin());
+      allow write: if isAdmin();
+    }
+  }
+}
