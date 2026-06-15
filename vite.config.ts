@@ -1,10 +1,16 @@
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
+import { tanstackStart } from "@tanstack/react-start/plugin/vite";
+import viteReact from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
 
 export default defineConfig({
-  // The lovable wrapper passes this through to the bundled @tanstack/react-start plugin.
-  // Type is too narrow in the wrapper's d.ts but the runtime supports it.
-  // @ts-expect-error -- tanstackStart key is supported at runtime
-  tanstackStart: {
-    server: { entry: "server" },
-  },
+  plugins: [
+    tailwindcss(),
+    tanstackStart({
+      customViteReactPlugin: true,
+      // Route bundled server entry through src/server.ts (SSR error wrapper)
+      server: { entry: "./src/server.ts" },
+    }),
+    viteReact(),
+  ],
 });
