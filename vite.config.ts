@@ -7,7 +7,6 @@ export default defineConfig({
   plugins: [
     tailwindcss(),
     tanstackStart({
-      customViteReactPlugin: true,
       // Route bundled server entry through src/server.ts (SSR error wrapper)
       server: { entry: "./src/server.ts" },
     }),
