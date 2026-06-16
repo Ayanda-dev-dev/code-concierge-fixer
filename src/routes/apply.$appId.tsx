@@ -1,11 +1,12 @@
 import { createFileRoute, Navigate, useNavigate } from "@tanstack/react-router";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getSessionRedirectPath, store, useAuthSession, useStore, type Application, type ApplicationDocuments } from "@/lib/edlts-store";
 import { uploadToCatbox, dataUrlToBlob, CatboxError } from "@/lib/catbox";
+import { createPayfastCheckout } from "@/lib/payfast.functions";
 import { toast } from "sonner";
 import { Check, ChevronLeft, ChevronRight, ScanLine, Camera, PenLine, Upload, CreditCard, CalendarCheck2, FileCheck2, Loader2 } from "lucide-react";
 
