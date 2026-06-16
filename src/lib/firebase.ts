@@ -7,6 +7,7 @@ import {
   sendEmailVerification,
 } from "firebase/auth";
 import { getFirestore, type Firestore, setDoc, doc, getDoc } from "firebase/firestore";
+import { uploadToCatbox } from "./catbox";
 
 export const firebaseConfig = {
   apiKey: "AIzaSyBxr24kgXazfDk_uNkB0xzafgaR5qUjiCw",
@@ -211,5 +212,99 @@ export async function bootstrapAndSignInDemo(role: "officer" | "admin") {
       ...cfg.profile,
     } satisfies FirebaseUserProfile);
     return cred;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Document Upload                                                     */
+/* ------------------------------------------------------------------ */
+
+export type DocumentUploadResult = {
+  downloadUrl: string;
+  uploadedAt: number;
+  fileName: string;
+};
+
+/**
+ * Upload a document file for an application.
+ * Validates file type and size, then uploads to Catbox via server proxy.
+ * Stores metadata in Firestore for tracking.
+ *
+ * @param file - The file to upload
+ * @param appId - Application ID for organizing uploads
+ * @param documentType - Type of document (idScan, photo, signature, etc.)
+ * @returns Download URL and upload timestamp
+ */
+export async function uploadDocument(
+  file: File,
+  appId: string,
+  documentType: string,
+): Promise<DocumentUploadResult> {
+  if (typeof window === "undefined") {
+    throw new Error("Document upload must run in browser");
+  }
+
+  // Validate file
+  if (!file || file.size === 0) {
+    throw new Error("File is empty");
+  }
+
+  const maxSizeMB = 50;
+  const maxSizeBytes = maxSizeMB * 1024 * 1024;
+  if (file.size > maxSizeBytes) {
+    throw new Error(
+      `File too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Max ${maxSizeMB} MB.`
+    );
+  }
+
+  const allowedTypes = [
+    "image/jpeg",
+    "image/jpg",
+    "image/png",
+    "image/webp",
+    "application/pdf",
+  ];
+  if (!allowedTypes.includes(file.type)) {
+    throw new Error(
+      `File type "${file.type}" not allowed. Use JPG, PNG, WEBP or PDF.`
+    );
+  }
+
+  try {
+    // Generate filename with timestamp to ensure uniqueness
+    const timestamp = Date.now();
+    const ext = file.name.split(".").pop() || "bin";
+    const filename = `${documentType}_${timestamp}.${ext}`;
+
+    // Upload to Catbox via server proxy
+    const downloadUrl = await uploadToCatbox(file, filename);
+
+    // Store metadata in Firestore for tracking
+    const firestore = getFirestoreDB();
+    if (firestore) {
+      try {
+        const docRef = doc(firestore, "applications", appId, "documents", `${timestamp}`);
+        await setDoc(docRef, {
+          documentType,
+          fileName: file.name,
+          fileSize: file.size,
+          downloadUrl,
+          uploadedAt: timestamp,
+          mimeType: file.type,
+        });
+      } catch (dbError) {
+        console.warn("Could not store document metadata in Firestore:", dbError);
+        // Don't fail the upload if metadata storage fails — file was uploaded successfully
+      }
+    }
+
+    return {
+      downloadUrl,
+      uploadedAt: timestamp,
+      fileName: file.name,
+    };
+  } catch (err) {
+    const errorMsg = err instanceof Error ? err.message : "Upload failed";
+    throw new Error(errorMsg);
   }
 }

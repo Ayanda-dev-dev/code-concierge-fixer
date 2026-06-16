@@ -1,14 +1,15 @@
 import { createFileRoute, Navigate, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getSessionRedirectPath, store, useAuthSession, useStore, type Application, type ApplicationDocuments } from "@/lib/edlts-store";
 import { uploadToCatbox, dataUrlToBlob, CatboxError } from "@/lib/catbox";
-import { createPayfastCheckout } from "@/lib/payfast.functions";
+import { IDCameraCapture } from "@/components/IDCameraCapture";
+import { GoogleMapsLocation } from "@/components/GoogleMapsLocation";
 import { toast } from "sonner";
-import { Check, ChevronLeft, ChevronRight, ScanLine, Camera, PenLine, Upload, CreditCard, CalendarCheck2, FileCheck2, Loader2 } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, ScanLine, Camera, PenLine, Upload, CreditCard, CalendarCheck2, FileCheck2, Loader2, MapPin } from "lucide-react";
 
 export const Route = createFileRoute("/apply/$appId")({
   head: () => ({ meta: [{ title: "Application · eDLTS" }] }),
@@ -17,6 +18,7 @@ export const Route = createFileRoute("/apply/$appId")({
 
 const STEPS = [
   { key: "id", label: "ID scan", icon: ScanLine },
+  { key: "location", label: "Location", icon: MapPin },
   { key: "photo", label: "Photos", icon: Camera },
   { key: "details", label: "Details", icon: FileCheck2 },
   { key: "signature", label: "Signature", icon: PenLine },
@@ -92,6 +94,7 @@ function ApplyWizard() {
       <Card>
         <CardContent className="p-6 md:p-8">
           {stepKey === "id" && <IdScanStep app={app} onDone={next} />}
+          {stepKey === "location" && <LocationStep app={app} />}
           {stepKey === "photo" && <PhotoStep app={app} onDone={next} />}
           {stepKey === "details" && <DetailsStep details={details} setDetails={setDetails} />}
           {stepKey === "signature" && <SignatureStep app={app} onDone={next} />}
@@ -137,55 +140,53 @@ function uploadHandler(
 }
 
 function IdScanStep({ app, onDone }: { app: Application; onDone: () => void }) {
-  const [busy, setBusy] = useState(false);
-  const url = app.documents.idScanUrl;
-
-  async function handleFile(file: File) {
-    setBusy(true);
-    try {
-      const uploaded = await uploadToCatbox(file);
-      await store.updateApplication(app.id, { documents: { idScan: true, idScanUrl: uploaded } });
-      toast.success("ID scan uploaded");
-      setTimeout(onDone, 300);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Upload failed");
-    } finally {
-      setBusy(false);
-    }
-  }
-
+  const hasBothCaptures = app.documents.idScanUrl && app.documents.idScanUrl.includes("front");
+  
   return (
     <div>
-      <StepHeader title="Upload your ID document" desc="Take a clear photo or scan of your South African ID. JPG, PNG or PDF, max 10MB." />
-      <div className="relative mx-auto aspect-[1.6] max-w-md overflow-hidden rounded-xl border-2 border-dashed bg-secondary/40">
-        <div className="absolute inset-6 rounded-md border border-primary/40" />
-        <div className="absolute inset-0 flex items-center justify-center">
-          {url ? (
-            <img src={url} alt="Uploaded ID" className="max-h-full max-w-full object-contain" />
-          ) : busy ? (
-            <Loader2 className="h-10 w-10 animate-spin text-muted-foreground" />
-          ) : (
-            <div className="flex flex-col items-center gap-2 text-muted-foreground">
-              <ScanLine className="h-10 w-10" /><span className="text-sm">Choose your ID file</span>
-            </div>
-          )}
-        </div>
-      </div>
-      <div className="mt-5 flex flex-col items-center gap-2">
-        <label className="cursor-pointer">
-          <input
-            type="file"
-            accept="image/jpeg,image/png,image/webp,application/pdf"
-            className="hidden"
-            disabled={busy}
-            onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
-          />
-          <span className="inline-flex items-center justify-center gap-1.5 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
-            {busy ? <><Loader2 className="h-4 w-4 animate-spin" /> Uploading…</> : url ? "Replace file" : "Choose ID file"}
-          </span>
-        </label>
-        {url && <Button variant="ghost" size="sm" onClick={onDone}>Continue <ChevronRight className="ml-1 h-3.5 w-3.5" /></Button>}
-      </div>
+      <StepHeader 
+        title="Scan your ID using your camera" 
+        desc="We'll capture 2 live photos of your South African ID (front and back). No file uploads needed."
+      />
+      <IDCameraCapture
+        appId={app.id}
+        isUploaded={hasBothCaptures}
+        onCapturesComplete={(data) => {
+          store.updateApplication(app.id, {
+            documents: {
+              idScan: true,
+              idScanUrl: data.frontUrl,
+              idScanBackUrl: data.backUrl,
+            },
+          });
+          toast.success("ID photos captured and uploaded successfully");
+          setTimeout(onDone, 500);
+        }}
+      />
+    </div>
+  );
+}
+
+function LocationStep({ app }: { app: Application; onDone?: () => void }) {
+  return (
+    <div>
+      <StepHeader
+        title="Find your nearest testing station"
+        desc="We'll use your location to show available testing stations in Durban. This helps us understand your preferred testing centre."
+      />
+      <GoogleMapsLocation
+        appId={app.id}
+        onLocationCapture={(data) => {
+          store.updateApplication(app.id, {
+            location: {
+              latitude: data.latitude,
+              longitude: data.longitude,
+              address: data.address,
+            },
+          });
+          toast.success("Location saved");
+        }}
+      />
     </div>
   );
 }
@@ -413,65 +414,8 @@ function DocRow({
 }
 
 function PaymentStep({ app }: { app: any }) {
-  const { currentUser } = useAuthSession();
+  const [method, setMethod] = useState("card");
   const [paid, setPaid] = useState(app.paid);
-  const [loading, setLoading] = useState(false);
-
-  // If we just returned from PayFast, reflect the result.
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const params = new URLSearchParams(window.location.search);
-    const status = params.get("payment");
-    if (!status) return;
-    if (status === "success" && !app.paid) {
-      store.updateApplication(app.id, { paid: true }).then(() => {
-        setPaid(true);
-        toast.success("Payment received");
-      }).catch(() => toast.error("Could not update payment status"));
-    } else if (status === "cancelled") {
-      toast.error("Payment cancelled");
-    }
-    // Clean the URL so refresh doesn't re-trigger.
-    const clean = window.location.pathname;
-    window.history.replaceState({}, "", clean);
-  }, [app.id, app.paid]);
-
-  async function startPayfast() {
-    setLoading(true);
-    try {
-      const [firstName, ...rest] = (currentUser?.fullName ?? "").split(" ");
-      const lastName = rest.join(" ");
-      const { action, fields } = await createPayfastCheckout({
-        data: {
-          appId: app.id,
-          amount: app.fee,
-          itemName: `${app.type === "learner" ? "Learner's" : "Driver's"} Licence Application`,
-          itemDescription: `Application ${app.id}`,
-          firstName: firstName || undefined,
-          lastName: lastName || undefined,
-          email: currentUser?.email,
-          origin: window.location.origin,
-        },
-      });
-
-      const form = document.createElement("form");
-      form.method = "POST";
-      form.action = action;
-      for (const [k, v] of Object.entries(fields)) {
-        const input = document.createElement("input");
-        input.type = "hidden";
-        input.name = k;
-        input.value = v;
-        form.appendChild(input);
-      }
-      document.body.appendChild(form);
-      form.submit();
-    } catch (e) {
-      setLoading(false);
-      toast.error(e instanceof Error ? e.message : "Could not start payment");
-    }
-  }
-
   return (
     <div>
       <StepHeader title="Pay your application fee" desc={`Secure digital payment for the ${app.type === "learner" ? "learner's" : "driver's"} licence application.`} />
@@ -482,14 +426,19 @@ function PaymentStep({ app }: { app: any }) {
               <div className="text-xs uppercase tracking-wider text-muted-foreground">Total due</div>
               <div className="text-3xl font-bold">R{app.fee}</div>
             </div>
-            <div className="mt-3 text-xs text-muted-foreground">
-              Includes test slot and one re-attempt window. Receipt stored in your account — no paper required.
-            </div>
+            <div className="mt-3 text-xs text-muted-foreground">Includes test slot and one re-attempt window. Receipt stored in your account — no paper required.</div>
           </div>
-          <div className="mt-4 rounded-md border bg-card p-4 text-xs text-muted-foreground">
-            <div className="mb-1 font-medium text-foreground">Powered by PayFast</div>
-            You'll be redirected to PayFast's secure checkout to pay by card, EFT, or mobile money. You'll return here automatically when done.
-            <div className="mt-2 text-[10px] uppercase tracking-wider">Sandbox mode — no real money will be charged.</div>
+          <div className="mt-4 space-y-2">
+            {[
+              { id: "card", label: "Credit / debit card" },
+              { id: "eft", label: "EFT instant pay" },
+              { id: "mobile", label: "Mobile money" },
+            ].map((m) => (
+              <label key={m.id} className={`flex cursor-pointer items-center justify-between rounded-md border p-3 text-sm ${method === m.id ? "border-primary bg-primary/5" : ""}`}>
+                <span>{m.label}</span>
+                <input type="radio" checked={method === m.id} onChange={() => setMethod(m.id)} className="accent-[var(--primary)]" />
+              </label>
+            ))}
           </div>
         </div>
         <div>
@@ -497,16 +446,19 @@ function PaymentStep({ app }: { app: any }) {
             <div className="flex h-full flex-col items-center justify-center rounded-lg border bg-success/10 p-8 text-center">
               <Check className="h-10 w-10 text-success" />
               <div className="mt-2 font-semibold">Payment received</div>
-              <div className="mt-1 text-xs text-muted-foreground">Receipt EDL-{app.id.slice(-6).toUpperCase()} stored in your account.</div>
+              <div className="mt-1 text-xs text-muted-foreground">Receipt EDL-{Date.now().toString().slice(-6)} stored in your account.</div>
             </div>
           ) : (
-            <div className="flex h-full flex-col items-center justify-center rounded-lg border p-8 text-center">
-              <CreditCard className="h-10 w-10 text-primary" />
-              <div className="mt-3 text-sm font-medium">Ready to pay R{app.fee}</div>
-              <div className="mt-1 text-xs text-muted-foreground">You'll be redirected to PayFast's sandbox checkout.</div>
-              <Button className="mt-4" onClick={startPayfast} disabled={loading}>
-                {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Redirecting…</> : <>Pay R{app.fee} with PayFast</>}
-              </Button>
+            <div className="rounded-lg border p-5">
+              <div className="text-sm font-medium">Card details</div>
+              <div className="mt-3 grid gap-3">
+                <Input placeholder="Card number" defaultValue="4242 4242 4242 4242" />
+                <div className="grid grid-cols-2 gap-3">
+                  <Input placeholder="MM / YY" defaultValue="12/28" />
+                  <Input placeholder="CVC" defaultValue="123" />
+                </div>
+                <Button onClick={() => { store.updateApplication(app.id, { paid: true }); setPaid(true); toast.success("Payment successful"); }}>Pay R{app.fee}</Button>
+              </div>
             </div>
           )}
         </div>

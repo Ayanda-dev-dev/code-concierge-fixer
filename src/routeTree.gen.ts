@@ -20,7 +20,6 @@ import { Route as ApplyIndexRouteImport } from './routes/apply.index'
 import { Route as TrackingAppIdRouteImport } from './routes/tracking.$appId'
 import { Route as ApplyAppIdRouteImport } from './routes/apply.$appId'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
-import { Route as ApiPublicPayfastNotifyRouteImport } from './routes/api/public/payfast.notify'
 import { Route as ApiPublicCatboxUploadRouteImport } from './routes/api/public/catbox.upload'
 
 const RegisterRoute = RegisterRouteImport.update({
@@ -78,11 +77,6 @@ const AdminUsersRoute = AdminUsersRouteImport.update({
   path: '/users',
   getParentRoute: () => AdminRoute,
 } as any)
-const ApiPublicPayfastNotifyRoute = ApiPublicPayfastNotifyRouteImport.update({
-  id: '/api/public/payfast/notify',
-  path: '/api/public/payfast/notify',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiPublicCatboxUploadRoute = ApiPublicCatboxUploadRouteImport.update({
   id: '/api/public/catbox/upload',
   path: '/api/public/catbox/upload',
@@ -102,7 +96,6 @@ export interface FileRoutesByFullPath {
   '/tracking/$appId': typeof TrackingAppIdRoute
   '/apply/': typeof ApplyIndexRoute
   '/api/public/catbox/upload': typeof ApiPublicCatboxUploadRoute
-  '/api/public/payfast/notify': typeof ApiPublicPayfastNotifyRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -117,7 +110,6 @@ export interface FileRoutesByTo {
   '/tracking/$appId': typeof TrackingAppIdRoute
   '/apply': typeof ApplyIndexRoute
   '/api/public/catbox/upload': typeof ApiPublicCatboxUploadRoute
-  '/api/public/payfast/notify': typeof ApiPublicPayfastNotifyRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -133,7 +125,6 @@ export interface FileRoutesById {
   '/tracking/$appId': typeof TrackingAppIdRoute
   '/apply/': typeof ApplyIndexRoute
   '/api/public/catbox/upload': typeof ApiPublicCatboxUploadRoute
-  '/api/public/payfast/notify': typeof ApiPublicPayfastNotifyRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -150,7 +141,6 @@ export interface FileRouteTypes {
     | '/tracking/$appId'
     | '/apply/'
     | '/api/public/catbox/upload'
-    | '/api/public/payfast/notify'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -165,7 +155,6 @@ export interface FileRouteTypes {
     | '/tracking/$appId'
     | '/apply'
     | '/api/public/catbox/upload'
-    | '/api/public/payfast/notify'
   id:
     | '__root__'
     | '/'
@@ -180,7 +169,6 @@ export interface FileRouteTypes {
     | '/tracking/$appId'
     | '/apply/'
     | '/api/public/catbox/upload'
-    | '/api/public/payfast/notify'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -195,7 +183,6 @@ export interface RootRouteChildren {
   TrackingAppIdRoute: typeof TrackingAppIdRoute
   ApplyIndexRoute: typeof ApplyIndexRoute
   ApiPublicCatboxUploadRoute: typeof ApiPublicCatboxUploadRoute
-  ApiPublicPayfastNotifyRoute: typeof ApiPublicPayfastNotifyRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -277,13 +264,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminUsersRouteImport
       parentRoute: typeof AdminRoute
     }
-    '/api/public/payfast/notify': {
-      id: '/api/public/payfast/notify'
-      path: '/api/public/payfast/notify'
-      fullPath: '/api/public/payfast/notify'
-      preLoaderRoute: typeof ApiPublicPayfastNotifyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/public/catbox/upload': {
       id: '/api/public/catbox/upload'
       path: '/api/public/catbox/upload'
@@ -316,7 +296,6 @@ const rootRouteChildren: RootRouteChildren = {
   TrackingAppIdRoute: TrackingAppIdRoute,
   ApplyIndexRoute: ApplyIndexRoute,
   ApiPublicCatboxUploadRoute: ApiPublicCatboxUploadRoute,
-  ApiPublicPayfastNotifyRoute: ApiPublicPayfastNotifyRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
