@@ -413,8 +413,65 @@ function DocRow({
 }
 
 function PaymentStep({ app }: { app: any }) {
-  const [method, setMethod] = useState("card");
+  const { currentUser } = useAuthSession();
   const [paid, setPaid] = useState(app.paid);
+  const [loading, setLoading] = useState(false);
+
+  // If we just returned from PayFast, reflect the result.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const status = params.get("payment");
+    if (!status) return;
+    if (status === "success" && !app.paid) {
+      store.updateApplication(app.id, { paid: true }).then(() => {
+        setPaid(true);
+        toast.success("Payment received");
+      }).catch(() => toast.error("Could not update payment status"));
+    } else if (status === "cancelled") {
+      toast.error("Payment cancelled");
+    }
+    // Clean the URL so refresh doesn't re-trigger.
+    const clean = window.location.pathname;
+    window.history.replaceState({}, "", clean);
+  }, [app.id, app.paid]);
+
+  async function startPayfast() {
+    setLoading(true);
+    try {
+      const [firstName, ...rest] = (currentUser?.fullName ?? "").split(" ");
+      const lastName = rest.join(" ");
+      const { action, fields } = await createPayfastCheckout({
+        data: {
+          appId: app.id,
+          amount: app.fee,
+          itemName: `${app.type === "learner" ? "Learner's" : "Driver's"} Licence Application`,
+          itemDescription: `Application ${app.id}`,
+          firstName: firstName || undefined,
+          lastName: lastName || undefined,
+          email: currentUser?.email,
+          origin: window.location.origin,
+        },
+      });
+
+      const form = document.createElement("form");
+      form.method = "POST";
+      form.action = action;
+      for (const [k, v] of Object.entries(fields)) {
+        const input = document.createElement("input");
+        input.type = "hidden";
+        input.name = k;
+        input.value = v;
+        form.appendChild(input);
+      }
+      document.body.appendChild(form);
+      form.submit();
+    } catch (e) {
+      setLoading(false);
+      toast.error(e instanceof Error ? e.message : "Could not start payment");
+    }
+  }
+
   return (
     <div>
       <StepHeader title="Pay your application fee" desc={`Secure digital payment for the ${app.type === "learner" ? "learner's" : "driver's"} licence application.`} />
@@ -425,19 +482,14 @@ function PaymentStep({ app }: { app: any }) {
               <div className="text-xs uppercase tracking-wider text-muted-foreground">Total due</div>
               <div className="text-3xl font-bold">R{app.fee}</div>
             </div>
-            <div className="mt-3 text-xs text-muted-foreground">Includes test slot and one re-attempt window. Receipt stored in your account — no paper required.</div>
+            <div className="mt-3 text-xs text-muted-foreground">
+              Includes test slot and one re-attempt window. Receipt stored in your account — no paper required.
+            </div>
           </div>
-          <div className="mt-4 space-y-2">
-            {[
-              { id: "card", label: "Credit / debit card" },
-              { id: "eft", label: "EFT instant pay" },
-              { id: "mobile", label: "Mobile money" },
-            ].map((m) => (
-              <label key={m.id} className={`flex cursor-pointer items-center justify-between rounded-md border p-3 text-sm ${method === m.id ? "border-primary bg-primary/5" : ""}`}>
-                <span>{m.label}</span>
-                <input type="radio" checked={method === m.id} onChange={() => setMethod(m.id)} className="accent-[var(--primary)]" />
-              </label>
-            ))}
+          <div className="mt-4 rounded-md border bg-card p-4 text-xs text-muted-foreground">
+            <div className="mb-1 font-medium text-foreground">Powered by PayFast</div>
+            You'll be redirected to PayFast's secure checkout to pay by card, EFT, or mobile money. You'll return here automatically when done.
+            <div className="mt-2 text-[10px] uppercase tracking-wider">Sandbox mode — no real money will be charged.</div>
           </div>
         </div>
         <div>
@@ -445,19 +497,16 @@ function PaymentStep({ app }: { app: any }) {
             <div className="flex h-full flex-col items-center justify-center rounded-lg border bg-success/10 p-8 text-center">
               <Check className="h-10 w-10 text-success" />
               <div className="mt-2 font-semibold">Payment received</div>
-              <div className="mt-1 text-xs text-muted-foreground">Receipt EDL-{Date.now().toString().slice(-6)} stored in your account.</div>
+              <div className="mt-1 text-xs text-muted-foreground">Receipt EDL-{app.id.slice(-6).toUpperCase()} stored in your account.</div>
             </div>
           ) : (
-            <div className="rounded-lg border p-5">
-              <div className="text-sm font-medium">Card details</div>
-              <div className="mt-3 grid gap-3">
-                <Input placeholder="Card number" defaultValue="4242 4242 4242 4242" />
-                <div className="grid grid-cols-2 gap-3">
-                  <Input placeholder="MM / YY" defaultValue="12/28" />
-                  <Input placeholder="CVC" defaultValue="123" />
-                </div>
-                <Button onClick={() => { store.updateApplication(app.id, { paid: true }); setPaid(true); toast.success("Payment successful"); }}>Pay R{app.fee}</Button>
-              </div>
+            <div className="flex h-full flex-col items-center justify-center rounded-lg border p-8 text-center">
+              <CreditCard className="h-10 w-10 text-primary" />
+              <div className="mt-3 text-sm font-medium">Ready to pay R{app.fee}</div>
+              <div className="mt-1 text-xs text-muted-foreground">You'll be redirected to PayFast's sandbox checkout.</div>
+              <Button className="mt-4" onClick={startPayfast} disabled={loading}>
+                {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Redirecting…</> : <>Pay R{app.fee} with PayFast</>}
+              </Button>
             </div>
           )}
         </div>
