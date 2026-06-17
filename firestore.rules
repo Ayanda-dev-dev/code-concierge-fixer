@@ -75,12 +75,21 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    /* ---------- audit_logs (append-only) ---------- */
+    /* ---------- auditLogs (append-only, write by any authenticated user) ---------- */
 
-    match /audit_logs/{logId} {
+    match /auditLogs/{logId} {
+      // Admins can read all audit logs
       allow read: if isAdmin();
+      
+      // Officers can read audit logs about their own actions
+      allow read: if isOfficer()
+        && resource.data.userId == request.auth.uid;
+      
+      // Any authenticated user can create audit logs for their own actions
       allow create: if isSignedIn()
         && request.resource.data.userId == request.auth.uid;
+      
+      // No updates or deletes (append-only)
       allow update, delete: if false;
     }
 
