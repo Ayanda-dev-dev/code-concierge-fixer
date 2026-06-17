@@ -21,6 +21,7 @@ import { Route as TrackingAppIdRouteImport } from './routes/tracking.$appId'
 import { Route as ApplyAppIdRouteImport } from './routes/apply.$appId'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as ApiPublicStripeVerifyRouteImport } from './routes/api/public/stripe.verify'
+import { Route as ApiPublicStripeCreateSessionRouteImport } from './routes/api/public/stripe.create-session'
 import { Route as ApiPublicCatboxUploadRouteImport } from './routes/api/public/catbox.upload'
 
 const RegisterRoute = RegisterRouteImport.update({
@@ -83,6 +84,12 @@ const ApiPublicStripeVerifyRoute = ApiPublicStripeVerifyRouteImport.update({
   path: '/api/public/stripe/verify',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicStripeCreateSessionRoute =
+  ApiPublicStripeCreateSessionRouteImport.update({
+    id: '/api/public/stripe/create-session',
+    path: '/api/public/stripe/create-session',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicCatboxUploadRoute = ApiPublicCatboxUploadRouteImport.update({
   id: '/api/public/catbox/upload',
   path: '/api/public/catbox/upload',
@@ -102,6 +109,7 @@ export interface FileRoutesByFullPath {
   '/tracking/$appId': typeof TrackingAppIdRoute
   '/apply/': typeof ApplyIndexRoute
   '/api/public/catbox/upload': typeof ApiPublicCatboxUploadRoute
+  '/api/public/stripe/create-session': typeof ApiPublicStripeCreateSessionRoute
   '/api/public/stripe/verify': typeof ApiPublicStripeVerifyRoute
 }
 export interface FileRoutesByTo {
@@ -117,6 +125,7 @@ export interface FileRoutesByTo {
   '/tracking/$appId': typeof TrackingAppIdRoute
   '/apply': typeof ApplyIndexRoute
   '/api/public/catbox/upload': typeof ApiPublicCatboxUploadRoute
+  '/api/public/stripe/create-session': typeof ApiPublicStripeCreateSessionRoute
   '/api/public/stripe/verify': typeof ApiPublicStripeVerifyRoute
 }
 export interface FileRoutesById {
@@ -133,6 +142,7 @@ export interface FileRoutesById {
   '/tracking/$appId': typeof TrackingAppIdRoute
   '/apply/': typeof ApplyIndexRoute
   '/api/public/catbox/upload': typeof ApiPublicCatboxUploadRoute
+  '/api/public/stripe/create-session': typeof ApiPublicStripeCreateSessionRoute
   '/api/public/stripe/verify': typeof ApiPublicStripeVerifyRoute
 }
 export interface FileRouteTypes {
@@ -150,6 +160,7 @@ export interface FileRouteTypes {
     | '/tracking/$appId'
     | '/apply/'
     | '/api/public/catbox/upload'
+    | '/api/public/stripe/create-session'
     | '/api/public/stripe/verify'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -165,6 +176,7 @@ export interface FileRouteTypes {
     | '/tracking/$appId'
     | '/apply'
     | '/api/public/catbox/upload'
+    | '/api/public/stripe/create-session'
     | '/api/public/stripe/verify'
   id:
     | '__root__'
@@ -180,6 +192,7 @@ export interface FileRouteTypes {
     | '/tracking/$appId'
     | '/apply/'
     | '/api/public/catbox/upload'
+    | '/api/public/stripe/create-session'
     | '/api/public/stripe/verify'
   fileRoutesById: FileRoutesById
 }
@@ -195,6 +208,7 @@ export interface RootRouteChildren {
   TrackingAppIdRoute: typeof TrackingAppIdRoute
   ApplyIndexRoute: typeof ApplyIndexRoute
   ApiPublicCatboxUploadRoute: typeof ApiPublicCatboxUploadRoute
+  ApiPublicStripeCreateSessionRoute: typeof ApiPublicStripeCreateSessionRoute
   ApiPublicStripeVerifyRoute: typeof ApiPublicStripeVerifyRoute
 }
 
@@ -284,6 +298,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicStripeVerifyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/stripe/create-session': {
+      id: '/api/public/stripe/create-session'
+      path: '/api/public/stripe/create-session'
+      fullPath: '/api/public/stripe/create-session'
+      preLoaderRoute: typeof ApiPublicStripeCreateSessionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/catbox/upload': {
       id: '/api/public/catbox/upload'
       path: '/api/public/catbox/upload'
@@ -316,6 +337,7 @@ const rootRouteChildren: RootRouteChildren = {
   TrackingAppIdRoute: TrackingAppIdRoute,
   ApplyIndexRoute: ApplyIndexRoute,
   ApiPublicCatboxUploadRoute: ApiPublicCatboxUploadRoute,
+  ApiPublicStripeCreateSessionRoute: ApiPublicStripeCreateSessionRoute,
   ApiPublicStripeVerifyRoute: ApiPublicStripeVerifyRoute,
 }
 export const routeTree = rootRouteImport

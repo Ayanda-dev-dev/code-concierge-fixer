@@ -37,8 +37,12 @@ export const Route = createFileRoute("/api/public/stripe/verify")({
         new Response(null, { status: 204, headers: CORS_HEADERS }),
 
       POST: async ({ request }) => {
-        const body = (await request.json().catch(() => null)) as { appId?: unknown } | null;
+        const body = (await request.json().catch(() => null)) as
+          | { appId?: unknown; sessionId?: unknown }
+          | null;
         const appId = typeof body?.appId === "string" ? body.appId.trim() : "";
+        const sessionId =
+          typeof body?.sessionId === "string" ? body.sessionId.trim() : "";
         if (!appId || appId.length > 128) {
           return json({ paid: false, error: "Invalid application id" }, 400);
         }
@@ -48,6 +52,37 @@ export const Route = createFileRoute("/api/public/stripe/verify")({
           return json({ paid: false, error: "Stripe not configured" });
         }
 
+        // Preferred path: direct lookup by session id from success_url.
+        if (sessionId && sessionId.startsWith("cs_")) {
+          const res = await fetch(
+            `https://api.stripe.com/v1/checkout/sessions/${encodeURIComponent(sessionId)}`,
+            { headers: { Authorization: `Bearer ${key}` } },
+          );
+          if (!res.ok) {
+            const text = await res.text();
+            return json(
+              { paid: false, error: `Stripe API ${res.status}: ${text.slice(0, 200)}` },
+              502,
+            );
+          }
+          const session = (await res.json()) as StripeSession;
+          if (
+            session.client_reference_id === appId &&
+            session.payment_status === "paid"
+          ) {
+            return json({
+              paid: true,
+              sessionId: session.id,
+              transactionId: session.payment_intent ?? session.id,
+              amount: session.amount_total ?? 0,
+              currency: session.currency ?? "zar",
+              paidAt: session.created * 1000,
+            });
+          }
+          return json({ paid: false });
+        }
+
+        // Fallback: scan recent sessions and match by client_reference_id.
         const res = await fetch(
           "https://api.stripe.com/v1/checkout/sessions?limit=100",
           { headers: { Authorization: `Bearer ${key}` } },
@@ -72,10 +107,11 @@ export const Route = createFileRoute("/api/public/stripe/verify")({
           sessionId: match.id,
           transactionId: match.payment_intent ?? match.id,
           amount: match.amount_total ?? 0,
-          currency: match.currency ?? "usd",
+          currency: match.currency ?? "zar",
           paidAt: match.created * 1000,
         });
       },
+
     },
   },
 });

@@ -54,11 +54,6 @@ const STEPS = [
 
 type StepKey = (typeof STEPS)[number]["key"];
 
-const STRIPE_PAYMENT_LINKS: Record<"learner" | "driver", string> = {
-  learner: "https://buy.stripe.com/test_28E00j7H37xN0ov8bS2cg00",
-  driver: "https://buy.stripe.com/test_bJe3cv7H3dWb5IP63K2cg01",
-};
-
 type StripeVerifyResult =
   | {
       paid: true;
@@ -70,11 +65,14 @@ type StripeVerifyResult =
     }
   | { paid: false; error?: string };
 
-async function verifyStripePayment(appId: string): Promise<StripeVerifyResult> {
+async function verifyStripePayment(
+  appId: string,
+  sessionId?: string,
+): Promise<StripeVerifyResult> {
   const res = await fetch("/api/public/stripe/verify", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ appId }),
+    body: JSON.stringify({ appId, sessionId }),
   });
 
   const payload = (await res.json().catch(() => ({}))) as Partial<StripeVerifyResult>;
@@ -87,6 +85,25 @@ async function verifyStripePayment(appId: string): Promise<StripeVerifyResult> {
 
   return payload as StripeVerifyResult;
 }
+
+async function createStripeCheckoutSession(input: {
+  appId: string;
+  type: "learner" | "driver";
+  fee: number;
+  email?: string;
+}): Promise<{ url: string } | { error: string }> {
+  const res = await fetch("/api/public/stripe/create-session", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  const payload = (await res.json().catch(() => ({}))) as { url?: string; error?: string };
+  if (!res.ok || !payload.url) {
+    return { error: payload.error ?? `Checkout failed (${res.status})` };
+  }
+  return { url: payload.url };
+}
+
 
 /* ===================================================================== */
 /* Validation                                                            */
@@ -152,6 +169,9 @@ function isStepComplete(
 /* Wizard                                                                */
 /* ===================================================================== */
 
+const PAYMENT_STEP_INDEX = STEPS.findIndex((s) => s.key === "payment");
+const stepStorageKey = (appId: string) => `edlts:apply:${appId}:step`;
+
 function ApplyWizard() {
   const { appId } = Route.useParams();
   const navigate = useNavigate();
@@ -170,6 +190,45 @@ function ApplyWizard() {
   useEffect(() => {
     if (app?.address) setDraftAddress(app.address);
   }, [app?.address]);
+
+  // Restore the wizard's step across reloads / Stripe redirects.
+  // Precedence: ?step=payment query param > localStorage > default 0.
+  const stepRestoredRef = useRef(false);
+  useEffect(() => {
+    if (stepRestoredRef.current) return;
+    if (typeof window === "undefined") return;
+    stepRestoredRef.current = true;
+
+    const params = new URLSearchParams(window.location.search);
+    const stepParam = params.get("step");
+    if (stepParam) {
+      const idx = STEPS.findIndex((s) => s.key === stepParam);
+      if (idx >= 0) {
+        setStep(idx);
+        try {
+          window.localStorage.setItem(stepStorageKey(appId), String(idx));
+        } catch {}
+        return;
+      }
+    }
+    try {
+      const saved = window.localStorage.getItem(stepStorageKey(appId));
+      const idx = saved ? Number(saved) : NaN;
+      if (Number.isFinite(idx) && idx >= 0 && idx < STEPS.length) {
+        setStep(idx);
+      }
+    } catch {}
+  }, [appId]);
+
+  // Persist step changes so a hard reload (or Stripe round-trip) keeps progress.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(stepStorageKey(appId), String(step));
+    } catch {}
+  }, [appId, step]);
+
+
 
   if (!isHydrated) return null;
   if (!user) return <Navigate to="/login" />;
@@ -851,43 +910,111 @@ function DocRow({
 /* --------------- Stripe Payment ------------------------------------- */
 
 function PaymentStep({ app }: { app: Application }) {
+  const { currentUser } = useAuthSession();
   const [verifying, setVerifying] = useState(false);
+  const [opening, setOpening] = useState(false);
   const [opened, setOpened] = useState(false);
   const paid = app.payment?.status === "paid";
-  const link = `${STRIPE_PAYMENT_LINKS[app.type]}?client_reference_id=${encodeURIComponent(app.id)}`;
 
-  function openCheckout() {
-    setOpened(true);
-    window.open(link, "_blank", "noopener,noreferrer");
-  }
-
-  async function verify() {
-    setVerifying(true);
-    try {
-      const result = await verifyStripePayment(app.id);
-      if (result.paid) {
-        await store.updateApplication(app.id, {
-          paid: true,
-          payment: {
-            status: "paid",
-            sessionId: result.sessionId,
-            transactionId: result.transactionId,
-            amount: result.amount,
-            paidAt: result.paidAt,
-          },
-        });
-        toast.success("Payment verified");
-      } else {
-        toast.error(
-          result.error
-            ? `Verification failed: ${result.error}`
-            : "No completed payment found yet. Try again in a few seconds.",
-        );
+  // Verify against Stripe. When sessionId is provided we look it up directly,
+  // otherwise we scan recent sessions by client_reference_id.
+  const verify = useCallback(
+    async (sessionId?: string, opts: { silent?: boolean } = {}) => {
+      setVerifying(true);
+      try {
+        const result = await verifyStripePayment(app.id, sessionId);
+        if (result.paid) {
+          await store.updateApplication(app.id, {
+            paid: true,
+            payment: {
+              status: "paid",
+              sessionId: result.sessionId,
+              transactionId: result.transactionId,
+              amount: result.amount,
+              paidAt: result.paidAt,
+            },
+          });
+          toast.success("Payment verified");
+          return true;
+        }
+        if (!opts.silent) {
+          toast.error(
+            result.error
+              ? `Verification failed: ${result.error}`
+              : "No completed payment found yet. Try again in a few seconds.",
+          );
+        }
+        return false;
+      } catch (e) {
+        if (!opts.silent) {
+          toast.error(e instanceof Error ? e.message : "Verification failed");
+        }
+        return false;
+      } finally {
+        setVerifying(false);
       }
+    },
+    [app.id],
+  );
+
+  // After Stripe redirects back with ?payment=success&session_id=cs_..., poll
+  // the verify endpoint a few times (handles webhook propagation delay), then
+  // clean up the URL so refresh doesn't re-verify forever.
+  const autoVerifiedRef = useRef(false);
+  useEffect(() => {
+    if (autoVerifiedRef.current) return;
+    if (typeof window === "undefined") return;
+    if (paid) return;
+
+    const params = new URLSearchParams(window.location.search);
+    const status = params.get("payment");
+    if (status !== "success") return;
+
+    autoVerifiedRef.current = true;
+    const sessionId = params.get("session_id") ?? undefined;
+    setOpened(true);
+
+    // Clean the URL so refresh doesn't re-trigger.
+    const cleanUrl = `${window.location.pathname}?step=payment`;
+    window.history.replaceState({}, document.title, cleanUrl);
+
+    let cancelled = false;
+    (async () => {
+      const max = 8;
+      const delay = 1500;
+      for (let i = 0; i < max && !cancelled; i++) {
+        const ok = await verify(sessionId, { silent: i < max - 1 });
+        if (ok) return;
+        await new Promise((r) => setTimeout(r, delay));
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [paid, verify]);
+
+  async function openCheckout() {
+    setOpening(true);
+    try {
+      const result = await createStripeCheckoutSession({
+        appId: app.id,
+        type: app.type,
+        fee: app.fee,
+        email: currentUser?.email,
+      });
+      if ("error" in result) {
+        toast.error(result.error);
+        return;
+      }
+      setOpened(true);
+      // Redirect in the same tab so success_url brings the user back to the
+      // Payment step (and our auto-verify effect picks up the session_id).
+      window.location.href = result.url;
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Verification failed");
+      toast.error(e instanceof Error ? e.message : "Could not open Stripe checkout");
     } finally {
-      setVerifying(false);
+      setOpening(false);
     }
   }
 
@@ -904,8 +1031,8 @@ function PaymentStep({ app }: { app: Application }) {
             <div className="text-3xl font-bold">R{app.fee}</div>
           </div>
           <div className="mt-3 text-xs text-muted-foreground">
-            Stripe-hosted checkout opens in a new tab. After payment, return here and tap “I've completed
-            payment” to verify.
+            You'll be taken to Stripe's secure checkout and brought right back to this step once
+            payment is complete. Your progress is saved.
           </div>
         </div>
 
@@ -915,18 +1042,27 @@ function PaymentStep({ app }: { app: Application }) {
               <Check className="h-10 w-10 text-success" />
               <div className="mt-2 font-semibold">Payment received</div>
               <div className="mt-1 text-xs text-muted-foreground">
-                Transaction {app.payment?.transactionId?.slice(0, 14) ?? "—"} ·{" "}
-                {app.payment?.amount ? `${(app.payment.amount / 100).toFixed(2)} ${app.payment.sessionId ? "" : ""}` : ""}
+                Transaction {app.payment?.transactionId?.slice(0, 14) ?? "—"}
+                {app.payment?.amount ? ` · R${(app.payment.amount / 100).toFixed(2)}` : ""}
               </div>
             </div>
           ) : (
             <div className="space-y-3 rounded-lg border p-5">
-              <Button onClick={openCheckout} className="w-full" size="lg">
-                <ExternalLink className="mr-2 h-4 w-4" />
-                Pay R{app.fee} with Stripe
+              <Button onClick={openCheckout} className="w-full" size="lg" disabled={opening}>
+                {opening ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Opening Stripe…
+                  </>
+                ) : (
+                  <>
+                    <ExternalLink className="mr-2 h-4 w-4" />
+                    Pay R{app.fee} with Stripe
+                  </>
+                )}
               </Button>
               <Button
-                onClick={verify}
+                onClick={() => verify()}
                 variant="outline"
                 disabled={!opened || verifying}
                 className="w-full"
@@ -952,6 +1088,7 @@ function PaymentStep({ app }: { app: Application }) {
     </div>
   );
 }
+
 
 /* --------------- Booking (3-month calendar) ------------------------- */
 
