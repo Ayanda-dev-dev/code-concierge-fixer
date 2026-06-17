@@ -286,10 +286,27 @@ export const store = {
     setState({ isHydrated: true });
     const auth = getFirebaseAuth();
     if (!auth) return;
-    onAuthStateChanged(auth, (fbUser) => {
+    onAuthStateChanged(auth, async (fbUser) => {
       if (!fbUser) {
+        // Log user logout before clearing state
+        if (state.currentUserId) {
+          const currentUser = state.users.find((u) => u.id === state.currentUserId);
+          if (currentUser) {
+            try {
+              const { logAuditAction } = await import("./audit-trail");
+              await logAuditAction({
+                userId: currentUser.id,
+                userName: currentUser.fullName,
+                userRole: currentUser.role,
+                action: "user_logout",
+              });
+            } catch (err) {
+              console.warn("[Audit] Failed to log logout:", err);
+            }
+          }
+        }
         clearSubscriptions();
-        setState({ currentUserId: null, applications: [], users: [] });
+        setState({ currentUserId: null, applications: [], users: [], lastLoggedInUserId: null });
         return;
       }
       watchProfile(fbUser.uid);
@@ -297,10 +314,28 @@ export const store = {
   },
 
   async signOut() {
+    // Log user logout before clearing state
+    if (state.currentUserId && typeof window !== "undefined") {
+      const currentUser = state.users.find((u) => u.id === state.currentUserId);
+      if (currentUser) {
+        try {
+          const { logAuditAction } = await import("./audit-trail");
+          await logAuditAction({
+            userId: currentUser.id,
+            userName: currentUser.fullName,
+            userRole: currentUser.role,
+            action: "user_logout",
+          });
+        } catch (err) {
+          console.warn("[Audit] Failed to log logout:", err);
+        }
+      }
+    }
+
     const auth = getFirebaseAuth();
     if (auth) await fbSignOut(auth);
     clearSubscriptions();
-    setState({ currentUserId: null, applications: [], users: [] });
+    setState({ currentUserId: null, applications: [], users: [], lastLoggedInUserId: null });
   },
 
   currentUser(): User | null {
