@@ -152,6 +152,9 @@ function isStepComplete(
 /* Wizard                                                                */
 /* ===================================================================== */
 
+const PAYMENT_STEP_INDEX = STEPS.findIndex((s) => s.key === "payment");
+const stepStorageKey = (appId: string) => `edlts:apply:${appId}:step`;
+
 function ApplyWizard() {
   const { appId } = Route.useParams();
   const navigate = useNavigate();
@@ -170,6 +173,45 @@ function ApplyWizard() {
   useEffect(() => {
     if (app?.address) setDraftAddress(app.address);
   }, [app?.address]);
+
+  // Restore the wizard's step across reloads / Stripe redirects.
+  // Precedence: ?step=payment query param > localStorage > default 0.
+  const stepRestoredRef = useRef(false);
+  useEffect(() => {
+    if (stepRestoredRef.current) return;
+    if (typeof window === "undefined") return;
+    stepRestoredRef.current = true;
+
+    const params = new URLSearchParams(window.location.search);
+    const stepParam = params.get("step");
+    if (stepParam) {
+      const idx = STEPS.findIndex((s) => s.key === stepParam);
+      if (idx >= 0) {
+        setStep(idx);
+        try {
+          window.localStorage.setItem(stepStorageKey(appId), String(idx));
+        } catch {}
+        return;
+      }
+    }
+    try {
+      const saved = window.localStorage.getItem(stepStorageKey(appId));
+      const idx = saved ? Number(saved) : NaN;
+      if (Number.isFinite(idx) && idx >= 0 && idx < STEPS.length) {
+        setStep(idx);
+      }
+    } catch {}
+  }, [appId]);
+
+  // Persist step changes so a hard reload (or Stripe round-trip) keeps progress.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(stepStorageKey(appId), String(step));
+    } catch {}
+  }, [appId, step]);
+
+
 
   if (!isHydrated) return null;
   if (!user) return <Navigate to="/login" />;
