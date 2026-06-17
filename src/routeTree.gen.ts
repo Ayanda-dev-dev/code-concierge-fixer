@@ -20,9 +20,9 @@ import { Route as ApplyIndexRouteImport } from './routes/apply.index'
 import { Route as TrackingAppIdRouteImport } from './routes/tracking.$appId'
 import { Route as ApplyAppIdRouteImport } from './routes/apply.$appId'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
-import { Route as ApiPublicStripeVerifyRouteImport } from './routes/api/public/stripe/verify'
-import { Route as ApiPublicStripeCreateSessionRouteImport } from './routes/api/public/stripe/create-session'
-import { Route as ApiPublicCatboxUploadRouteImport } from './routes/api/public/catbox/upload'
+import { Route as ApiPublicStripeVerifyRouteImport } from './routes/api.public.stripe.verify'
+import { Route as ApiPublicStripeCreateSessionRouteImport } from './routes/api.public.stripe.create-session'
+import { Route as ApiPublicCatboxUploadRouteImport } from './routes/api.public.catbox.upload'
 
 const RegisterRoute = RegisterRouteImport.update({
   id: '/register',
