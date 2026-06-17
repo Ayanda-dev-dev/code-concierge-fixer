@@ -2,7 +2,7 @@ import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useAuthSession, useStore } from "@/lib/edlts-store";
-import { Users, FileText, BadgeCheck, Activity, Settings } from "lucide-react";
+import { Users, FileText, BadgeCheck, Activity, Settings, BarChart3 } from "lucide-react";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({ meta: [{ title: "Admin · eDLTS" }] }),
@@ -29,9 +29,14 @@ function AdminPage() {
           <div className="text-xs uppercase tracking-wider text-muted-foreground">Administrator</div>
           <h1 className="text-3xl font-bold">System overview</h1>
         </div>
-        <Link to="/admin/users">
-          <Button variant="outline"><Settings className="mr-1.5 h-4 w-4" /> User Management</Button>
-        </Link>
+        <div className="flex gap-2">
+          <Link to="/admin/users">
+            <Button variant="outline"><Settings className="mr-1.5 h-4 w-4" /> User Management</Button>
+          </Link>
+          <Link to="/admin/audit-trail">
+            <Button variant="outline"><BarChart3 className="mr-1.5 h-4 w-4" /> Audit Trail</Button>
+          </Link>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-4">

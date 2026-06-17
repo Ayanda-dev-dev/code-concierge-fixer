@@ -18,7 +18,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { store, useAuthSession, useStore, type Application } from "@/lib/edlts-store";
 import { logAuditAction } from "@/lib/audit-trail";
 import { toast } from "sonner";
-import { Fingerprint, Check, X, QrCode, Eye, BookOpen, FileText } from "lucide-react";
+import { Fingerprint, Check, X, QrCode, Eye, BookOpen, FileText, BarChart3 } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/officer")({
   head: () => ({ meta: [{ title: "Officer console · eDLTS" }] }),
