@@ -117,20 +117,27 @@ function OfficerPage() {
         <h1 className="text-3xl font-bold">{tab === "bookings" ? "Today's Queue" : "Applications"}</h1>
       </div>
 
-      {/* Tab Buttons */}
-      <div className="mb-6 flex gap-2">
-        <Button
-          variant={tab === "bookings" ? "default" : "outline"}
-          onClick={() => setTab("bookings")}
-        >
-          <BookOpen className="mr-2 h-4 w-4" /> Bookings & Queue ({queue.length})
-        </Button>
-        <Button
-          variant={tab === "applications" ? "default" : "outline"}
-          onClick={() => setTab("applications")}
-        >
-          <FileText className="mr-2 h-4 w-4" /> All Applications ({allApplications.length})
-        </Button>
+      {/* Tab Buttons and Navigation */}
+      <div className="mb-6 flex flex-wrap items-center gap-2 justify-between">
+        <div className="flex gap-2">
+          <Button
+            variant={tab === "bookings" ? "default" : "outline"}
+            onClick={() => setTab("bookings")}
+          >
+            <BookOpen className="mr-2 h-4 w-4" /> Bookings & Queue ({queue.length})
+          </Button>
+          <Button
+            variant={tab === "applications" ? "default" : "outline"}
+            onClick={() => setTab("applications")}
+          >
+            <FileText className="mr-2 h-4 w-4" /> All Applications ({allApplications.length})
+          </Button>
+        </div>
+        <Link to="/officer/audit-trail">
+          <Button variant="outline">
+            <BarChart3 className="mr-1.5 h-4 w-4" /> Activity Log
+          </Button>
+        </Link>
       </div>
 
       {/* Bookings Tab */}

@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/select";
 import { useAuthSession, useStore, store, type User } from "@/lib/edlts-store";
 import { adminCreateStaffUser } from "@/lib/firebase";
+import { logAuditAction } from "@/lib/audit-trail";
 import { toast } from "sonner";
 import { ArrowLeft, Plus, Pencil, Trash2, Search, ShieldCheck, UserCircle } from "lucide-react";
 
