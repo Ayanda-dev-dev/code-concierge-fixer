@@ -54,11 +54,6 @@ const STEPS = [
 
 type StepKey = (typeof STEPS)[number]["key"];
 
-const STRIPE_PAYMENT_LINKS: Record<"learner" | "driver", string> = {
-  learner: "https://buy.stripe.com/test_28E00j7H37xN0ov8bS2cg00",
-  driver: "https://buy.stripe.com/test_bJe3cv7H3dWb5IP63K2cg01",
-};
-
 type StripeVerifyResult =
   | {
       paid: true;
@@ -70,11 +65,14 @@ type StripeVerifyResult =
     }
   | { paid: false; error?: string };
 
-async function verifyStripePayment(appId: string): Promise<StripeVerifyResult> {
+async function verifyStripePayment(
+  appId: string,
+  sessionId?: string,
+): Promise<StripeVerifyResult> {
   const res = await fetch("/api/public/stripe/verify", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ appId }),
+    body: JSON.stringify({ appId, sessionId }),
   });
 
   const payload = (await res.json().catch(() => ({}))) as Partial<StripeVerifyResult>;
@@ -87,6 +85,25 @@ async function verifyStripePayment(appId: string): Promise<StripeVerifyResult> {
 
   return payload as StripeVerifyResult;
 }
+
+async function createStripeCheckoutSession(input: {
+  appId: string;
+  type: "learner" | "driver";
+  fee: number;
+  email?: string;
+}): Promise<{ url: string } | { error: string }> {
+  const res = await fetch("/api/public/stripe/create-session", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  const payload = (await res.json().catch(() => ({}))) as { url?: string; error?: string };
+  if (!res.ok || !payload.url) {
+    return { error: payload.error ?? `Checkout failed (${res.status})` };
+  }
+  return { url: payload.url };
+}
+
 
 /* ===================================================================== */
 /* Validation                                                            */
