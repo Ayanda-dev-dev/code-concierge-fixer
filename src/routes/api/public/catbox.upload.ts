@@ -38,6 +38,9 @@ export const Route = createFileRoute("/api/public/catbox/upload")({
           // Rebuild the multipart body the way Catbox expects.
           const fd = new FormData();
           fd.append("reqtype", "fileupload");
+          // UserHash ties uploads to our Catbox account so files persist and
+          // are manageable from the Catbox dashboard.
+          fd.append("userhash", "c2e6a266ebe699a31dbd465ba");
           const filename =
             (file as { name?: string }).name ?? `upload-${Date.now()}.bin`;
           fd.append("fileToUpload", file as Blob, filename);

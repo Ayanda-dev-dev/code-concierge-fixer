@@ -1,10 +1,11 @@
 // Catbox.moe anonymous upload helper.
 // Browsers can NOT POST directly to https://catbox.moe/user/api.php — that
 // host returns no CORS headers, so a direct fetch fails with "Failed to
-// fetch". We send the file to our own server route, which forwards it to
-// Catbox and returns the resulting public URL.
+// fetch". We send the file to a Lovable Cloud edge function that proxies
+// the upload to Catbox and returns the resulting public URL.
 
-const CATBOX_PROXY = "/api/public/catbox/upload";
+import { supabase } from "@/integrations/supabase/client";
+
 const MAX_BYTES = 10 * 1024 * 1024; // 10 MB cap for our use case
 const ALLOWED_MIME = new Set([
   "image/jpeg",
@@ -56,9 +57,15 @@ export async function uploadToCatbox(
     `upload-${Date.now()}.${type.split("/")[1] ?? "bin"}`;
   fd.append("fileToUpload", file, name);
 
-  let res: Response;
+  let data: { url?: string; error?: string } | null;
+  let invokeError: Error | null = null;
   try {
-    res = await fetch(CATBOX_PROXY, { method: "POST", body: fd });
+    const result = await supabase.functions.invoke<{ url?: string; error?: string }>(
+      "catbox-upload",
+      { body: fd },
+    );
+    data = result.data ?? null;
+    invokeError = result.error ?? null;
   } catch (e) {
     throw new CatboxError(
       `Could not reach upload service: ${e instanceof Error ? e.message : "network error"}`,
@@ -66,17 +73,13 @@ export async function uploadToCatbox(
     );
   }
 
-  let payload: { url?: string; error?: string } = {};
-  try {
-    payload = (await res.json()) as { url?: string; error?: string };
-  } catch {
-    throw new CatboxError(`Upload service returned ${res.status}`, "server");
+  if (invokeError || !data?.url) {
+    throw new CatboxError(
+      data?.error ?? invokeError?.message ?? "Upload failed",
+      "server",
+    );
   }
-
-  if (!res.ok || !payload.url) {
-    throw new CatboxError(payload.error ?? `Upload failed (${res.status})`, "server");
-  }
-  return payload.url;
+  return data.url;
 }
 
 /** Convert a data URL (e.g. from canvas.toDataURL()) into a Blob suitable for upload. */

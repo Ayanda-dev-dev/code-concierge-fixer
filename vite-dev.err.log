@@ -1,0 +1,41 @@
+[33mThe plugin "vite-tsconfig-paths" is detected. Vite now supports tsconfig paths resolution natively via the [1mresolve.tsconfigPaths[22m option. You can remove the plugin and set [1mresolve.tsconfigPaths: true[22m in your Vite config instead.[39m
+[2m11:12:12 PM[22m [33m[1m[vite][22m[39m [33m[2m(client)[22m[39m [2m[console.warn] [22mModule "node:async_hooks" has been externalized for browser compatibility. Cannot access "node:async_hooks.AsyncLocalStorage" in client code. See https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.
+[2m11:12:13 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m [31m[Unhandled error] [1mTypeError[22m: import_browser_external_node_async_hooks.AsyncLocalStorage is not a constructor
+[39m > node_modules/@tanstack/start-storage-context/dist/esm/async-local-storage.js:5:68
+
+
+[client] Runtime Error: Uncaught TypeError: import_browser_external_node_async_hooks.AsyncLocalStorage is not a constructor at http://127.0.0.1:5173/node_modules/.vite/deps/@tanstack_react-start.js?v=3bebb72d:488:69
+TypeError: import_browser_external_node_async_hooks.AsyncLocalStorage is not a constructor
+    at http://127.0.0.1:5173/node_modules/.vite/deps/@tanstack_react-start.js?v=3bebb72d:488:69
+[2m11:12:50 PM[22m [33m[1m[vite][22m[39m [33m[2m(client)[22m[39m [2m[console.warn] [22mModule "node:async_hooks" has been externalized for browser compatibility. Cannot access "node:async_hooks.AsyncLocalStorage" in client code. See https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.
+[2m11:12:50 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m [31m[Unhandled error] [1mTypeError[22m: import_browser_external_node_async_hooks.AsyncLocalStorage is not a constructor
+[39m > node_modules/@tanstack/start-storage-context/dist/esm/async-local-storage.js:5:68
+
+
+[client] Runtime Error: Uncaught TypeError: import_browser_external_node_async_hooks.AsyncLocalStorage is not a constructor at http://127.0.0.1:5173/node_modules/.vite/deps/@tanstack_react-start.js?v=3bebb72d:488:69
+TypeError: import_browser_external_node_async_hooks.AsyncLocalStorage is not a constructor
+    at http://127.0.0.1:5173/node_modules/.vite/deps/@tanstack_react-start.js?v=3bebb72d:488:69
+[2m11:12:56 PM[22m [33m[1m[vite][22m[39m [33m[2m(client)[22m[39m [2m[console.warn] [22mModule "node:async_hooks" has been externalized for browser compatibility. Cannot access "node:async_hooks.AsyncLocalStorage" in client code. See https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.
+[2m11:12:56 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m [31m[Unhandled error] [1mTypeError[22m: import_browser_external_node_async_hooks.AsyncLocalStorage is not a constructor
+[39m > node_modules/@tanstack/start-storage-context/dist/esm/async-local-storage.js:5:68
+
+
+[client] Runtime Error: Uncaught TypeError: import_browser_external_node_async_hooks.AsyncLocalStorage is not a constructor at http://127.0.0.1:5173/node_modules/.vite/deps/@tanstack_react-start.js?v=3bebb72d:488:69
+TypeError: import_browser_external_node_async_hooks.AsyncLocalStorage is not a constructor
+    at http://127.0.0.1:5173/node_modules/.vite/deps/@tanstack_react-start.js?v=3bebb72d:488:69
+[2m11:14:01 PM[22m [33m[1m[vite][22m[39m [33m[2m(client)[22m[39m [2m[console.warn] [22mModule "node:async_hooks" has been externalized for browser compatibility. Cannot access "node:async_hooks.AsyncLocalStorage" in client code. See https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.
+[2m11:14:01 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m [31m[Unhandled error] [1mTypeError[22m: import_browser_external_node_async_hooks.AsyncLocalStorage is not a constructor
+[39m > node_modules/@tanstack/start-storage-context/dist/esm/async-local-storage.js:5:68
+
+
+[client] Runtime Error: Uncaught TypeError: import_browser_external_node_async_hooks.AsyncLocalStorage is not a constructor at http://127.0.0.1:5173/node_modules/.vite/deps/@tanstack_react-start.js?v=3bebb72d:488:69
+TypeError: import_browser_external_node_async_hooks.AsyncLocalStorage is not a constructor
+    at http://127.0.0.1:5173/node_modules/.vite/deps/@tanstack_react-start.js?v=3bebb72d:488:69
+[2m11:14:32 PM[22m [33m[1m[vite][22m[39m [33m[2m(client)[22m[39m [2m[console.warn] [22mModule "node:async_hooks" has been externalized for browser compatibility. Cannot access "node:async_hooks.AsyncLocalStorage" in client code. See https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.
+[2m11:14:32 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m [31m[Unhandled error] [1mTypeError[22m: import_browser_external_node_async_hooks.AsyncLocalStorage is not a constructor
+[39m > node_modules/@tanstack/start-storage-context/dist/esm/async-local-storage.js:5:68
+
+
+[client] Runtime Error: Uncaught TypeError: import_browser_external_node_async_hooks.AsyncLocalStorage is not a constructor at http://127.0.0.1:5173/node_modules/.vite/deps/@tanstack_react-start.js?v=3bebb72d:488:69
+TypeError: import_browser_external_node_async_hooks.AsyncLocalStorage is not a constructor
+    at http://127.0.0.1:5173/node_modules/.vite/deps/@tanstack_react-start.js?v=3bebb72d:488:69

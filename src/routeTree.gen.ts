@@ -20,6 +20,7 @@ import { Route as ApplyIndexRouteImport } from './routes/apply.index'
 import { Route as TrackingAppIdRouteImport } from './routes/tracking.$appId'
 import { Route as ApplyAppIdRouteImport } from './routes/apply.$appId'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
+import { Route as ApiPublicStripeVerifyRouteImport } from './routes/api/public/stripe.verify'
 import { Route as ApiPublicCatboxUploadRouteImport } from './routes/api/public/catbox.upload'
 
 const RegisterRoute = RegisterRouteImport.update({
@@ -77,6 +78,11 @@ const AdminUsersRoute = AdminUsersRouteImport.update({
   path: '/users',
   getParentRoute: () => AdminRoute,
 } as any)
+const ApiPublicStripeVerifyRoute = ApiPublicStripeVerifyRouteImport.update({
+  id: '/api/public/stripe/verify',
+  path: '/api/public/stripe/verify',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicCatboxUploadRoute = ApiPublicCatboxUploadRouteImport.update({
   id: '/api/public/catbox/upload',
   path: '/api/public/catbox/upload',
@@ -96,6 +102,7 @@ export interface FileRoutesByFullPath {
   '/tracking/$appId': typeof TrackingAppIdRoute
   '/apply/': typeof ApplyIndexRoute
   '/api/public/catbox/upload': typeof ApiPublicCatboxUploadRoute
+  '/api/public/stripe/verify': typeof ApiPublicStripeVerifyRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -110,6 +117,7 @@ export interface FileRoutesByTo {
   '/tracking/$appId': typeof TrackingAppIdRoute
   '/apply': typeof ApplyIndexRoute
   '/api/public/catbox/upload': typeof ApiPublicCatboxUploadRoute
+  '/api/public/stripe/verify': typeof ApiPublicStripeVerifyRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -125,6 +133,7 @@ export interface FileRoutesById {
   '/tracking/$appId': typeof TrackingAppIdRoute
   '/apply/': typeof ApplyIndexRoute
   '/api/public/catbox/upload': typeof ApiPublicCatboxUploadRoute
+  '/api/public/stripe/verify': typeof ApiPublicStripeVerifyRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -141,6 +150,7 @@ export interface FileRouteTypes {
     | '/tracking/$appId'
     | '/apply/'
     | '/api/public/catbox/upload'
+    | '/api/public/stripe/verify'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -155,6 +165,7 @@ export interface FileRouteTypes {
     | '/tracking/$appId'
     | '/apply'
     | '/api/public/catbox/upload'
+    | '/api/public/stripe/verify'
   id:
     | '__root__'
     | '/'
@@ -169,6 +180,7 @@ export interface FileRouteTypes {
     | '/tracking/$appId'
     | '/apply/'
     | '/api/public/catbox/upload'
+    | '/api/public/stripe/verify'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -183,6 +195,7 @@ export interface RootRouteChildren {
   TrackingAppIdRoute: typeof TrackingAppIdRoute
   ApplyIndexRoute: typeof ApplyIndexRoute
   ApiPublicCatboxUploadRoute: typeof ApiPublicCatboxUploadRoute
+  ApiPublicStripeVerifyRoute: typeof ApiPublicStripeVerifyRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -264,6 +277,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminUsersRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/api/public/stripe/verify': {
+      id: '/api/public/stripe/verify'
+      path: '/api/public/stripe/verify'
+      fullPath: '/api/public/stripe/verify'
+      preLoaderRoute: typeof ApiPublicStripeVerifyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/catbox/upload': {
       id: '/api/public/catbox/upload'
       path: '/api/public/catbox/upload'
@@ -296,17 +316,8 @@ const rootRouteChildren: RootRouteChildren = {
   TrackingAppIdRoute: TrackingAppIdRoute,
   ApplyIndexRoute: ApplyIndexRoute,
   ApiPublicCatboxUploadRoute: ApiPublicCatboxUploadRoute,
+  ApiPublicStripeVerifyRoute: ApiPublicStripeVerifyRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

@@ -53,6 +53,7 @@ export type AppStatus =
 export type ApplicationDocuments = {
   idScan?: boolean;
   idScanUrl?: string;
+  idScanBackUrl?: string;
   photo?: boolean;
   photoUrls?: string[];
   selfieUrl?: string;
@@ -66,6 +67,44 @@ export type ApplicationDocuments = {
   eyeCertUrl?: string;
   learnerCert?: boolean;
   learnerCertUrl?: string;
+  supportingDocs?: Array<{ name: string; type: string; url: string; uploadedAt: number }>;
+};
+
+export type ApplicationLocation = {
+  latitude: number;
+  longitude: number;
+  accuracy?: number;
+  address?: string;
+  selectedStation?: {
+    id: string;
+    name: string;
+    address: string;
+    distance: number;
+  };
+};
+
+export type ApplicationAddress = {
+  street: string;
+  suburb: string;
+  city: string;
+  province: string;
+  postal: string;
+};
+
+export type ApplicationPayment = {
+  status: "pending" | "paid" | "failed";
+  transactionId?: string;
+  amount?: number;
+  paidAt?: number;
+  sessionId?: string;
+};
+
+export type ApplicationBooking = {
+  centre: string;
+  date: string;
+  time: string;
+  status: "pending" | "confirmed" | "cancelled";
+  createdAt: number;
 };
 
 export type Application = {
@@ -80,6 +119,10 @@ export type Application = {
   fee: number;
   paid: boolean;
   documents: ApplicationDocuments;
+  location?: ApplicationLocation;
+  address?: ApplicationAddress;
+  payment?: ApplicationPayment;
+  booking?: ApplicationBooking;
   queueNumber?: string;
   queuePosition?: number;
   productionStage?: number;
@@ -277,14 +320,26 @@ export const store = {
   async updateApplication(id: string, patch: Partial<Application>) {
     const db = getFirestoreDB();
     if (!db) throw new Error("Firestore unavailable");
-    // Merge documents subfield without clobbering existing keys.
     const existing = state.applications.find((a) => a.id === id);
     const mergedDocs = patch.documents
       ? { ...(existing?.documents ?? {}), ...patch.documents }
       : undefined;
     const update: Record<string, unknown> = { ...patch };
     if (mergedDocs) update.documents = mergedDocs;
-    await updateDoc(doc(db, "applications", id), update);
+    // Firestore rejects `undefined` — strip it recursively.
+    const clean = (v: unknown): unknown => {
+      if (Array.isArray(v)) return v.map(clean);
+      if (v && typeof v === "object") {
+        const out: Record<string, unknown> = {};
+        for (const [k, val] of Object.entries(v as Record<string, unknown>)) {
+          if (val === undefined) continue;
+          out[k] = clean(val);
+        }
+        return out;
+      }
+      return v;
+    };
+    await updateDoc(doc(db, "applications", id), clean(update) as Record<string, unknown>);
   },
 
   getApplication(id: string) {

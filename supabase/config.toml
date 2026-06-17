@@ -1,0 +1,4 @@
+project_id = "istiathroetsqhdmvimb"
+
+[functions.catbox-upload]
+verify_jwt = false
