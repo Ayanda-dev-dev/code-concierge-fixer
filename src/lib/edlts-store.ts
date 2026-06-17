@@ -133,6 +133,7 @@ type DB = {
   currentUserId: string | null;
   applications: Application[];
   isHydrated: boolean;
+  lastLoggedInUserId?: string | null; // Track for login/logout logging
 };
 
 const initialState = (): DB => ({
@@ -140,6 +141,7 @@ const initialState = (): DB => ({
   currentUserId: null,
   applications: [],
   isHydrated: false,
+  lastLoggedInUserId: undefined,
 });
 
 let state: DB = initialState();
@@ -209,6 +211,21 @@ function watchProfile(uid: string) {
       const user: User = { id: uid, ...data };
       const others = state.users.filter((u) => u.id !== uid);
       setState({ users: [...others, user], currentUserId: uid });
+      
+      // Log user login on first profile load
+      if (state.lastLoggedInUserId !== uid && typeof window !== "undefined") {
+        setState({ lastLoggedInUserId: uid });
+        // Import and call logAuditAction asynchronously to avoid circular dependencies
+        import("./audit-trail").then(({ logAuditAction }) => {
+          logAuditAction({
+            userId: uid,
+            userName: user.fullName,
+            userRole: user.role,
+            action: "user_login",
+          }).catch((err) => console.warn("[Audit] Failed to log login:", err));
+        });
+      }
+      
       // Once we know the role, wire role-scoped collection subscriptions.
       watchApplicationsForRole(uid, user.role);
       if (user.role === "admin") watchAllUsers();
