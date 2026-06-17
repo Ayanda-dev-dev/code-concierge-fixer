@@ -3,6 +3,9 @@
 // The browser calls this route after returning from Stripe Checkout. Keeping
 // the Stripe secret lookup behind a route also keeps TanStack Start server
 // helpers out of the browser bundle.
+//
+// DEMO MODE: When sessionId starts with "demo_", simulates a successful payment.
+// Useful for testing and demonstrations without actual Stripe processing.
 
 import { createFileRoute } from "@tanstack/react-router";
 
@@ -45,6 +48,27 @@ export const Route = createFileRoute("/api/public/stripe/verify")({
           typeof body?.sessionId === "string" ? body.sessionId.trim() : "";
         if (!appId || appId.length > 128) {
           return json({ paid: false, error: "Invalid application id" }, 400);
+        }
+
+        // DEMO MODE: Handle demo session IDs (start with "demo_")
+        const DEMO_MODE = typeof process !== "undefined" && process.env?.DEMO_MODE === "true";
+        if (DEMO_MODE && sessionId && sessionId.startsWith("demo_")) {
+          // Validate demo session format: demo_{appId}_{timestamp}
+          const sessionAppId = sessionId.split("_")[1];
+          if (sessionAppId === appId) {
+            // Simulate successful payment
+            const amount = 15000; // R150 in cents (default learner fee)
+            return json({
+              paid: true,
+              sessionId,
+              transactionId: `demo_txn_${appId}_${Date.now()}`,
+              amount,
+              currency: "zar",
+              paidAt: Date.now(),
+              demo: true,
+            });
+          }
+          return json({ paid: false, error: "Invalid demo session" }, 400);
         }
 
         const key = process.env.STRIPE_SECRET_KEY;

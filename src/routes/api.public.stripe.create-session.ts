@@ -3,6 +3,9 @@
 // Returns { url } that the browser can redirect (or open) to. The success_url
 // brings the user back to /apply/:appId with ?step=payment&payment=success
 // so the wizard restores the Payment step and auto-verifies.
+//
+// DEMO MODE: When DEMO_MODE=true environment variable is set, simulates successful
+// payment without redirecting to Stripe. Useful for testing and demonstrations.
 
 import { createFileRoute } from "@tanstack/react-router";
 
@@ -42,6 +45,24 @@ export const Route = createFileRoute("/api/public/stripe/create-session")({
 
         if (!appId || appId.length > 128) return json({ error: "Invalid application id" }, 400);
         if (!fee) return json({ error: "Invalid fee" }, 400);
+
+        // DEMO MODE: Simulate successful Stripe session without actual Stripe API call
+        const DEMO_MODE = typeof process !== "undefined" && process.env?.DEMO_MODE === "true";
+        if (DEMO_MODE) {
+          const origin =
+            request.headers.get("origin") ||
+            (() => {
+              const u = new URL(request.url);
+              return `${u.protocol}//${u.host}`;
+            })();
+          const sessionId = `demo_${appId}_${Date.now()}`;
+          const successUrl = `${origin}/apply/${encodeURIComponent(appId)}?step=payment&payment=success&session_id=${sessionId}`;
+          return json({
+            id: sessionId,
+            url: successUrl,
+            demo: true,
+          });
+        }
 
         const key = process.env.STRIPE_SECRET_KEY;
         if (!key) return json({ error: "Stripe not configured" }, 500);
@@ -97,7 +118,7 @@ export const Route = createFileRoute("/api/public/stripe/create-session")({
           );
         }
 
-        return json({ id: payload.id, url: payload.url });
+        return json({ id: payload.id, url: payload.url, demo: false });
       },
     },
   },
