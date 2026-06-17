@@ -108,6 +108,14 @@ function UserManagementPage() {
       if (editingUser) {
         const { password: _pw, ...rest } = form;
         await store.updateUser(editingUser.id, rest);
+        await logAuditAction({
+          userId: user.id,
+          userName: user.fullName,
+          userRole: user.role,
+          action: "user_updated",
+          relatedUserId: editingUser.id,
+          details: { updatedFields: Object.keys(rest) },
+        });
         toast.success("User updated");
       } else {
         const { password, ...profile } = form;
@@ -124,6 +132,13 @@ function UserManagementPage() {
         }
         try {
           await adminCreateStaffUser(profile.email.trim().toLowerCase(), password, profile);
+          await logAuditAction({
+            userId: user.id,
+            userName: user.fullName,
+            userRole: user.role,
+            action: "user_created",
+            details: { newUserRole: profile.role, email: profile.email },
+          });
           toast.success("Staff user created");
         } catch (err: any) {
           const code = err?.code || "";
@@ -147,6 +162,14 @@ function UserManagementPage() {
   async function confirmDelete(u: User) {
     try {
       await store.deleteUser(u.id);
+      await logAuditAction({
+        userId: user.id,
+        userName: user.fullName,
+        userRole: user.role,
+        action: "user_deleted",
+        relatedUserId: u.id,
+        details: { deletedUserEmail: u.email, deletedUserRole: u.role },
+      });
       toast.success("User deleted (Firestore profile removed).");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to delete user");
