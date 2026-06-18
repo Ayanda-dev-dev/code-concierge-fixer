@@ -18,10 +18,10 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApplyIndexRouteImport } from './routes/apply.index'
 import { Route as TrackingAppIdRouteImport } from './routes/tracking.$appId'
+import { Route as OfficerAuditTrailRouteImport } from './routes/officer.audit-trail'
 import { Route as ApplyAppIdRouteImport } from './routes/apply.$appId'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as AdminAuditTrailRouteImport } from './routes/admin.audit-trail'
-import { Route as OfficerAuditTrailRouteImport } from './routes/officer.audit-trail'
 import { Route as ApiPublicStripeVerifyRouteImport } from './routes/api.public.stripe.verify'
 import { Route as ApiPublicStripeCreateSessionRouteImport } from './routes/api.public.stripe.create-session'
 import { Route as ApiPublicCatboxUploadRouteImport } from './routes/api.public.catbox.upload'
@@ -71,6 +71,11 @@ const TrackingAppIdRoute = TrackingAppIdRouteImport.update({
   path: '/tracking/$appId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OfficerAuditTrailRoute = OfficerAuditTrailRouteImport.update({
+  id: '/audit-trail',
+  path: '/audit-trail',
+  getParentRoute: () => OfficerRoute,
+} as any)
 const ApplyAppIdRoute = ApplyAppIdRouteImport.update({
   id: '/apply/$appId',
   path: '/apply/$appId',
@@ -85,11 +90,6 @@ const AdminAuditTrailRoute = AdminAuditTrailRouteImport.update({
   id: '/audit-trail',
   path: '/audit-trail',
   getParentRoute: () => AdminRoute,
-} as any)
-const OfficerAuditTrailRoute = OfficerAuditTrailRouteImport.update({
-  id: '/audit-trail',
-  path: '/audit-trail',
-  getParentRoute: () => OfficerRoute,
 } as any)
 const ApiPublicStripeVerifyRoute = ApiPublicStripeVerifyRouteImport.update({
   id: '/api/public/stripe/verify',
@@ -116,10 +116,10 @@ export interface FileRoutesByFullPath {
   '/officer': typeof OfficerRouteWithChildren
   '/queue': typeof QueueRoute
   '/register': typeof RegisterRoute
-  '/admin/users': typeof AdminUsersRoute
   '/admin/audit-trail': typeof AdminAuditTrailRoute
-  '/officer/audit-trail': typeof OfficerAuditTrailRoute
+  '/admin/users': typeof AdminUsersRoute
   '/apply/$appId': typeof ApplyAppIdRoute
+  '/officer/audit-trail': typeof OfficerAuditTrailRoute
   '/tracking/$appId': typeof TrackingAppIdRoute
   '/apply/': typeof ApplyIndexRoute
   '/api/public/catbox/upload': typeof ApiPublicCatboxUploadRoute
@@ -134,10 +134,10 @@ export interface FileRoutesByTo {
   '/officer': typeof OfficerRouteWithChildren
   '/queue': typeof QueueRoute
   '/register': typeof RegisterRoute
-  '/admin/users': typeof AdminUsersRoute
   '/admin/audit-trail': typeof AdminAuditTrailRoute
-  '/officer/audit-trail': typeof OfficerAuditTrailRoute
+  '/admin/users': typeof AdminUsersRoute
   '/apply/$appId': typeof ApplyAppIdRoute
+  '/officer/audit-trail': typeof OfficerAuditTrailRoute
   '/tracking/$appId': typeof TrackingAppIdRoute
   '/apply': typeof ApplyIndexRoute
   '/api/public/catbox/upload': typeof ApiPublicCatboxUploadRoute
@@ -153,10 +153,10 @@ export interface FileRoutesById {
   '/officer': typeof OfficerRouteWithChildren
   '/queue': typeof QueueRoute
   '/register': typeof RegisterRoute
-  '/admin/users': typeof AdminUsersRoute
   '/admin/audit-trail': typeof AdminAuditTrailRoute
-  '/officer/audit-trail': typeof OfficerAuditTrailRoute
+  '/admin/users': typeof AdminUsersRoute
   '/apply/$appId': typeof ApplyAppIdRoute
+  '/officer/audit-trail': typeof OfficerAuditTrailRoute
   '/tracking/$appId': typeof TrackingAppIdRoute
   '/apply/': typeof ApplyIndexRoute
   '/api/public/catbox/upload': typeof ApiPublicCatboxUploadRoute
@@ -173,10 +173,10 @@ export interface FileRouteTypes {
     | '/officer'
     | '/queue'
     | '/register'
-    | '/admin/users'
     | '/admin/audit-trail'
-    | '/officer/audit-trail'
+    | '/admin/users'
     | '/apply/$appId'
+    | '/officer/audit-trail'
     | '/tracking/$appId'
     | '/apply/'
     | '/api/public/catbox/upload'
@@ -191,10 +191,10 @@ export interface FileRouteTypes {
     | '/officer'
     | '/queue'
     | '/register'
-    | '/admin/users'
     | '/admin/audit-trail'
-    | '/officer/audit-trail'
+    | '/admin/users'
     | '/apply/$appId'
+    | '/officer/audit-trail'
     | '/tracking/$appId'
     | '/apply'
     | '/api/public/catbox/upload'
@@ -209,40 +209,188 @@ export interface FileRouteTypes {
     | '/officer'
     | '/queue'
     | '/register'
-    | '/admin/users'
     | '/admin/audit-trail'
-    | '/officer/audit-trail'
+    | '/admin/users'
     | '/apply/$appId'
+    | '/officer/audit-trail'
     | '/tracking/$appId'
     | '/apply/'
     | '/api/public/catbox/upload'
     | '/api/public/stripe/create-session'
     | '/api/public/stripe/verify'
-  fileRoutesByFullPath: FileRoutesByFullPath
+  fileRoutesById: FileRoutesById
+}
+export interface RootRouteChildren {
+  IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRouteWithChildren
+  DashboardRoute: typeof DashboardRoute
+  LoginRoute: typeof LoginRoute
+  OfficerRoute: typeof OfficerRouteWithChildren
+  QueueRoute: typeof QueueRoute
+  RegisterRoute: typeof RegisterRoute
+  ApplyAppIdRoute: typeof ApplyAppIdRoute
+  TrackingAppIdRoute: typeof TrackingAppIdRoute
+  ApplyIndexRoute: typeof ApplyIndexRoute
+  ApiPublicCatboxUploadRoute: typeof ApiPublicCatboxUploadRoute
+  ApiPublicStripeCreateSessionRoute: typeof ApiPublicStripeCreateSessionRoute
+  ApiPublicStripeVerifyRoute: typeof ApiPublicStripeVerifyRoute
 }
 
 declare module '@tanstack/react-router' {
-  interface FileRouteTypes extends FileRouteTypes {}
+  interface FileRoutesByPath {
+    '/register': {
+      id: '/register'
+      path: '/register'
+      fullPath: '/register'
+      preLoaderRoute: typeof RegisterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/queue': {
+      id: '/queue'
+      path: '/queue'
+      fullPath: '/queue'
+      preLoaderRoute: typeof QueueRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/officer': {
+      id: '/officer'
+      path: '/officer'
+      fullPath: '/officer'
+      preLoaderRoute: typeof OfficerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/apply/': {
+      id: '/apply/'
+      path: '/apply'
+      fullPath: '/apply/'
+      preLoaderRoute: typeof ApplyIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tracking/$appId': {
+      id: '/tracking/$appId'
+      path: '/tracking/$appId'
+      fullPath: '/tracking/$appId'
+      preLoaderRoute: typeof TrackingAppIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/officer/audit-trail': {
+      id: '/officer/audit-trail'
+      path: '/audit-trail'
+      fullPath: '/officer/audit-trail'
+      preLoaderRoute: typeof OfficerAuditTrailRouteImport
+      parentRoute: typeof OfficerRoute
+    }
+    '/apply/$appId': {
+      id: '/apply/$appId'
+      path: '/apply/$appId'
+      fullPath: '/apply/$appId'
+      preLoaderRoute: typeof ApplyAppIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/users': {
+      id: '/admin/users'
+      path: '/users'
+      fullPath: '/admin/users'
+      preLoaderRoute: typeof AdminUsersRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/audit-trail': {
+      id: '/admin/audit-trail'
+      path: '/audit-trail'
+      fullPath: '/admin/audit-trail'
+      preLoaderRoute: typeof AdminAuditTrailRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/api/public/stripe/verify': {
+      id: '/api/public/stripe/verify'
+      path: '/api/public/stripe/verify'
+      fullPath: '/api/public/stripe/verify'
+      preLoaderRoute: typeof ApiPublicStripeVerifyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/stripe/create-session': {
+      id: '/api/public/stripe/create-session'
+      path: '/api/public/stripe/create-session'
+      fullPath: '/api/public/stripe/create-session'
+      preLoaderRoute: typeof ApiPublicStripeCreateSessionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/catbox/upload': {
+      id: '/api/public/catbox/upload'
+      path: '/api/public/catbox/upload'
+      fullPath: '/api/public/catbox/upload'
+      preLoaderRoute: typeof ApiPublicCatboxUploadRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+  }
 }
 
-const AdminRouteChildren = [AdminUsersRoute, AdminAuditTrailRoute] as const
-const AdminRouteWithChildren = AdminRoute.addChildren(AdminRouteChildren)
+interface AdminRouteChildren {
+  AdminAuditTrailRoute: typeof AdminAuditTrailRoute
+  AdminUsersRoute: typeof AdminUsersRoute
+}
 
-const OfficerRouteChildren = [OfficerAuditTrailRoute] as const
-const OfficerRouteWithChildren = OfficerRoute.addChildren(OfficerRouteChildren)
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminAuditTrailRoute: AdminAuditTrailRoute,
+  AdminUsersRoute: AdminUsersRoute,
+}
 
-export const routeTree = rootRouteImport.addChildren([
-  IndexRoute,
-  AdminRouteWithChildren,
-  DashboardRoute,
-  LoginRoute,
-  OfficerRouteWithChildren,
-  QueueRoute,
-  RegisterRoute,
-  ApplyAppIdRoute,
-  TrackingAppIdRoute,
-  ApplyIndexRoute,
-  ApiPublicCatboxUploadRoute,
-  ApiPublicStripeCreateSessionRoute,
-  ApiPublicStripeVerifyRoute,
-])
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+
+interface OfficerRouteChildren {
+  OfficerAuditTrailRoute: typeof OfficerAuditTrailRoute
+}
+
+const OfficerRouteChildren: OfficerRouteChildren = {
+  OfficerAuditTrailRoute: OfficerAuditTrailRoute,
+}
+
+const OfficerRouteWithChildren =
+  OfficerRoute._addFileChildren(OfficerRouteChildren)
+
+const rootRouteChildren: RootRouteChildren = {
+  IndexRoute: IndexRoute,
+  AdminRoute: AdminRouteWithChildren,
+  DashboardRoute: DashboardRoute,
+  LoginRoute: LoginRoute,
+  OfficerRoute: OfficerRouteWithChildren,
+  QueueRoute: QueueRoute,
+  RegisterRoute: RegisterRoute,
+  ApplyAppIdRoute: ApplyAppIdRoute,
+  TrackingAppIdRoute: TrackingAppIdRoute,
+  ApplyIndexRoute: ApplyIndexRoute,
+  ApiPublicCatboxUploadRoute: ApiPublicCatboxUploadRoute,
+  ApiPublicStripeCreateSessionRoute: ApiPublicStripeCreateSessionRoute,
+  ApiPublicStripeVerifyRoute: ApiPublicStripeVerifyRoute,
+}
+export const routeTree = rootRouteImport
+  ._addFileChildren(rootRouteChildren)
+  ._addFileTypes<FileRouteTypes>()
