@@ -18,7 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { store, useAuthSession, useStore, type Application } from "@/lib/edlts-store";
 import { logAuditAction } from "@/lib/audit-trail";
 import { toast } from "sonner";
-import { Fingerprint, Check, X, QrCode, Eye, BookOpen, FileText, BarChart3 } from "lucide-react";
+import { Fingerprint, Check, X, QrCode, Eye, BookOpen, FileText, BarChart3, Factory } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/officer")({
@@ -31,9 +31,10 @@ function OfficerPage() {
   const apps = useStore((s) => s.applications);
   const users = useStore((s) => s.users);
 
-  const [tab, setTab] = useState<"bookings" | "applications">("bookings");
+  const [tab, setTab] = useState<"bookings" | "applications" | "production">("bookings");
   const [testResultDialog, setTestResultDialog] = useState<{ open: boolean; appId?: string }>({ open: false });
   const [appDetailsDialog, setAppDetailsDialog] = useState<{ open: boolean; appId?: string }>({ open: false });
+  const [productionStageDialog, setProductionStageDialog] = useState<{ open: boolean; appId?: string }>({ open: false });
   const [testForm, setTestForm] = useState({ passed: true, score: "", comments: "" });
   const [submitting, setSubmitting] = useState(false);
 
@@ -43,6 +44,7 @@ function OfficerPage() {
 
   const queue = useMemo(() => apps.filter((a) => ["booked", "checked_in", "in_test"].includes(a.status)), [apps]);
   const allApplications = useMemo(() => apps.filter((a) => !["draft"].includes(a.status)), [apps]);
+  const productionApplications = useMemo(() => apps.filter((a) => a.status === "producing" || a.status === "ready"), [apps]);
 
   const selectedApp = testResultDialog.appId ? apps.find((a) => a.id === testResultDialog.appId) : null;
   const selectedAppDetails = appDetailsDialog.appId ? apps.find((a) => a.id === appDetailsDialog.appId) : null;
@@ -110,6 +112,66 @@ function OfficerPage() {
     }
   }
 
+  async function advanceProductionStage(appId: string) {
+    const app = apps.find((a) => a.id === appId);
+    if (!app) return;
+
+    setSubmitting(true);
+    try {
+      const currentStage = app.productionStage ?? 1;
+      const maxStage = 4;
+      
+      if (currentStage >= maxStage) {
+        toast.error("Card is already at final stage");
+        return;
+      }
+
+      const nextStage = currentStage + 1;
+      const newStatus = nextStage >= maxStage ? "ready" : "producing";
+
+      await store.updateApplication(appId, {
+        productionStage: nextStage,
+        status: newStatus,
+      });
+
+      const stageLabels = [
+        "Production started",
+        "Card printed",
+        "In transit to centre",
+        "Ready for collection",
+      ];
+
+      await logAuditAction({
+        userId: user.id,
+        userName: user.fullName,
+        userRole: user.role,
+        action: "officer_action",
+        relatedAppId: appId,
+        details: {
+          actionType: "advance_production_stage",
+          fromStage: currentStage,
+          toStage: nextStage,
+          stageName: stageLabels[nextStage - 1],
+          readyForCollection: newStatus === "ready",
+        },
+      });
+
+      if (newStatus === "ready") {
+        toast.success("✓ Card marked ready for collection. Applicant will be notified.");
+        // TODO: Send email notification to applicant
+      } else {
+        toast.success(`Production advanced to stage ${nextStage}`);
+      }
+
+      setProductionStageDialog({ open: false });
+    } catch (error) {
+      toast.error("Failed to advance production stage");
+      console.error(error);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   return (
     <main className="mx-auto max-w-7xl px-4 py-10">
       <div className="mb-8">
@@ -131,6 +193,12 @@ function OfficerPage() {
             onClick={() => setTab("applications")}
           >
             <FileText className="mr-2 h-4 w-4" /> All Applications ({allApplications.length})
+          </Button>
+          <Button
+            variant={tab === "production" ? "default" : "outline"}
+            onClick={() => setTab("production")}
+          >
+            <Factory className="mr-2 h-4 w-4" /> Card Production ({productionApplications.length})
           </Button>
         </div>
         <Link to="/officer/audit-trail">
@@ -233,6 +301,59 @@ function OfficerPage() {
         </div>
       )}
 
+      {/* Production Tab */}
+      {tab === "production" && (
+        <div className="grid gap-3">
+          {productionApplications.length === 0 && (
+            <Card>
+              <CardContent className="py-12 text-center text-sm text-muted-foreground">No applications in production.</CardContent>
+            </Card>
+          )}
+          {productionApplications.map((a) => {
+            const applicant = users.find((u) => u.id === a.userId);
+            const stageLabels = ["Production started", "Card printed", "In transit to centre", "Ready for collection"];
+            const stage = a.productionStage ?? 1;
+            return (
+              <Card key={a.id}>
+                <CardContent className="flex flex-wrap items-center justify-between gap-4 p-5">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold">{applicant?.fullName ?? "Applicant"}</span>
+                      <Badge>{a.type === "learner" ? "Learner's" : "Driver's"}</Badge>
+                      <Badge 
+                        variant={a.status === "ready" ? "default" : "secondary"}
+                        className={a.status === "ready" ? "bg-success text-success-foreground" : ""}
+                      >
+                        {a.status === "ready" ? "Ready for Collection" : `Stage ${stage}`}
+                      </Badge>
+                    </div>
+                    <div className="mt-2 text-xs text-muted-foreground">
+                      {applicant?.email} · Ref {a.id.slice(0, 8).toUpperCase()}
+                    </div>
+                    <div className="mt-2 text-sm">
+                      <span className="font-medium">{stageLabels[stage - 1]}</span>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {a.status === "producing" && stage < 4 && (
+                      <Button 
+                        size="sm" 
+                        onClick={() => setProductionStageDialog({ open: true, appId: a.id })}
+                      >
+                        <Factory className="mr-1 h-3.5 w-3.5" /> Advance Stage
+                      </Button>
+                    )}
+                    {a.status === "ready" && (
+                      <Badge className="bg-success/20 text-success">✓ Ready</Badge>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
       {/* Test Result Dialog */}
       <Dialog open={testResultDialog.open} onOpenChange={(open) => setTestResultDialog({ open })}>
         <DialogContent className="max-w-md">
@@ -282,6 +403,42 @@ function OfficerPage() {
             </Button>
             <Button onClick={submitTestResult} disabled={submitting}>
               {submitting ? "Submitting..." : "Submit Result"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Production Stage Dialog */}
+      <Dialog open={productionStageDialog.open} onOpenChange={(open) => setProductionStageDialog({ open })}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Advance Card Production</DialogTitle>
+            <DialogDescription>
+              {productionStageDialog.appId && (() => {
+                const app = apps.find((a) => a.id === productionStageDialog.appId);
+                const applicant = app ? users.find((u) => u.id === app.userId) : null;
+                const stageLabels = ["Production started", "Card printed", "In transit to centre", "Ready for collection"];
+                const stage = app?.productionStage ?? 1;
+                return `Move ${applicant?.fullName}'s card from "${stageLabels[stage - 1]}" to "${stageLabels[stage]}"`;
+              })()}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="rounded-md bg-blue-50 p-3 text-sm text-blue-900">
+              <p className="font-medium">Advancing production stage</p>
+              <p className="mt-1 text-xs">The applicant will receive an email notification when the card is ready for collection.</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setProductionStageDialog({ open: false })} disabled={submitting}>
+              Cancel
+            </Button>
+            <Button onClick={() => {
+              if (productionStageDialog.appId) {
+                advanceProductionStage(productionStageDialog.appId);
+              }
+            }} disabled={submitting}>
+              {submitting ? "Advancing..." : "Advance Stage"}
             </Button>
           </DialogFooter>
         </DialogContent>

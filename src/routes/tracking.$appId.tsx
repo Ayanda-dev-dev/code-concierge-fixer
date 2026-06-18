@@ -55,20 +55,18 @@ function TrackingPage() {
             })}
           </ol>
 
-          <div className="mt-8 flex flex-wrap gap-2 border-t pt-6">
-            {stage < STAGES.length && (
-              <Button onClick={() => {
-                const next = stage + 1;
-                store.updateApplication(app.id, {
-                  productionStage: next,
-                  status: next >= STAGES.length ? "ready" : "producing",
-                });
-              }}>Advance stage</Button>
-            )}
-            {app.status === "ready" && (
-              <Button variant="outline" onClick={() => store.updateApplication(app.id, { status: "collected" })}>Mark collected</Button>
-            )}
-          </div>
+          {app.status === "ready" && (
+            <div className="mt-8 border-t pt-6">
+              <p className="mb-4 text-sm font-medium text-success">✓ Your card is ready for collection! Visit your centre with your original ID.</p>
+              <Button variant="outline" onClick={() => store.updateApplication(app.id, { status: "collected" })}>Confirm collection</Button>
+            </div>
+          )}
+          
+          {app.status === "producing" && (
+            <div className="mt-8 border-t pt-6">
+              <p className="text-xs text-muted-foreground">Production is managed by our team. You'll receive an email notification when your card is ready for collection.</p>
+            </div>
+          )}
         </CardContent>
       </Card>
     </main>

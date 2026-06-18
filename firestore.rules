@@ -65,11 +65,23 @@ service cloud.firestore {
       allow read: if isSignedIn()
         && (resource.data.userId == request.auth.uid || isStaff());
 
-      // Owner can update while not yet in production/collected; staff can always update.
+      // Update rules:
+      // 1. Applicant can update their own draft/submitted/booked applications (not production)
+      // 2. Officers can update productionStage and status for applications in production
+      // 3. Admins can always update
       allow update: if isSignedIn() && (
+        // Applicant self-update (only for non-production status)
         (resource.data.userId == request.auth.uid
           && resource.data.status in ["draft", "submitted", "booked"])
-        || isStaff()
+        // Officer update: can advance production stages
+        || (isOfficer()
+          && resource.data.status in ["producing", "ready"]
+          && request.resource.data.productionStage != null)
+        // General staff update (non-production)
+        || (isStaff()
+          && resource.data.status not in ["producing", "ready"])
+        // Admin can update anything
+        || isAdmin()
       );
 
       allow delete: if isAdmin();
