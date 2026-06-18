@@ -69,8 +69,36 @@ function AdminAuditTrailPage() {
     });
   }, [logs, userFilter]);
 
-  // Get unique actions from logs
+  // Get unique actions from logs for the action filter dropdown
   const allActions = Array.from(new Set(logs.map((l) => l.action)));
+
+  const getDetailsSummary = (log: AuditLog) => {
+    const details: string[] = [];
+    if (log.relatedUserId) {
+      details.push(`User: ${log.relatedUserId.slice(0, 8)}`);
+    }
+    if (log.relatedAppId) {
+      details.push(`App: ${log.relatedAppId.slice(0, 8).toUpperCase()}`);
+    }
+    if (log.details) {
+      if (log.details.newUserRole) {
+        details.push(`Role: ${log.details.newUserRole}`);
+      }
+      if (log.details.deletedUserRole) {
+        details.push(`Was: ${log.details.deletedUserRole}`);
+      }
+      if (log.details.score !== undefined) {
+        details.push(`Score: ${log.details.score}`);
+      }
+      if (log.details.passed !== undefined) {
+        details.push(`${log.details.passed ? "Passed" : "Failed"}`);
+      }
+      if (log.details.updatedFields) {
+        details.push(`Fields: ${Array.isArray(log.details.updatedFields) ? log.details.updatedFields.join(", ") : log.details.updatedFields}`);
+      }
+    }
+    return details.length > 0 ? details.join(" • ") : "—";
+  };
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-10">
@@ -184,9 +212,9 @@ function AdminAuditTrailPage() {
                     <td className="p-3 pr-4 text-xs whitespace-nowrap">
                       {log.timestamp?.toDate ? new Date(log.timestamp.toDate()).toLocaleString() : new Date(log.timestamp).toLocaleString()}
                     </td>
-                    <td className="p-3 pr-4 font-medium">{log.userName}</td>
+                    <td className="p-3 pr-4 font-medium text-sm">{log.userName}</td>
                     <td className="p-3 pr-4">
-                      <Badge variant="outline" className="capitalize">
+                      <Badge variant="outline" className="capitalize text-xs">
                         {log.userRole}
                       </Badge>
                     </td>
@@ -195,15 +223,8 @@ function AdminAuditTrailPage() {
                         {getActionLabel(log.action as any)}
                       </Badge>
                     </td>
-                    <td className="p-3 pr-4 text-xs text-muted-foreground">
-                      {log.details && Object.keys(log.details).length > 0 ? (
-                        <span title={JSON.stringify(log.details, null, 2)}>
-                          {log.details.score !== undefined && `Score: ${log.details.score}`}
-                          {log.details.passed !== undefined && `Result: ${log.details.passed ? "Passed" : "Failed"}`}
-                        </span>
-                      ) : (
-                        "—"
-                      )}
+                    <td className="p-3 pr-4 text-xs text-muted-foreground max-w-xs truncate" title={getDetailsSummary(log)}>
+                      {getDetailsSummary(log)}
                     </td>
                   </tr>
                 ))}

@@ -32,13 +32,15 @@ export type AuditLogAction =
   | "booking_updated"
   | "applicant_checked_in"
   | "biometrics_captured"
+  | "biometrics_failed"
   | "test_started"
   | "test_passed"
   | "test_failed"
   | "test_result_submitted"
   | "document_uploaded"
   | "account_activated"
-  | "account_deactivated";
+  | "account_deactivated"
+  | "officer_action";
 
 export type AuditLog = {
   id: string;
@@ -98,6 +100,7 @@ export async function logAuditAction(input: {
 
 /**
  * Query audit logs with filters
+ * Respects user role permissions: admins see all, officers see their own, applicants see their own
  */
 export async function getAuditLogs(filters?: {
   startDate?: Date;
@@ -112,7 +115,7 @@ export async function getAuditLogs(filters?: {
     const db = getFirestoreDB();
     if (!db) return [];
 
-    let constraints = [];
+    let constraints: any[] = [];
 
     if (filters?.startDate) {
       constraints.push(where("timestamp", ">=", filters.startDate));
@@ -167,6 +170,7 @@ export function getActionLabel(action: AuditLogAction): string {
     booking_updated: "Booking Updated",
     applicant_checked_in: "Applicant Checked In",
     biometrics_captured: "Biometrics Captured",
+    biometrics_failed: "Biometrics Failed",
     test_started: "Test Started",
     test_passed: "Test Passed",
     test_failed: "Test Failed",
@@ -174,6 +178,7 @@ export function getActionLabel(action: AuditLogAction): string {
     document_uploaded: "Document Uploaded",
     account_activated: "Account Activated",
     account_deactivated: "Account Deactivated",
+    officer_action: "Officer Action",
   };
   return labels[action] || action;
 }
@@ -186,5 +191,6 @@ export function getActionColor(action: AuditLogAction): string {
   if (action.includes("passed") || action.includes("activated")) return "bg-success/10 text-success";
   if (action.includes("submitted") || action.includes("verified")) return "bg-blue-500/10 text-blue-600";
   if (action.includes("login") || action.includes("logout")) return "bg-amber-500/10 text-amber-600";
+  if (action.includes("checked_in") || action.includes("captured")) return "bg-purple-500/10 text-purple-600";
   return "bg-muted text-muted-foreground";
 }

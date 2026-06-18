@@ -332,7 +332,7 @@ function UserManagementPage() {
                   placeholder="At least 6 characters"
                 />
                 <p className="rounded-md bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
-                  Staff account will be created in Firebase Authentication and Firestore immediately. They can sign in with this email + password — no email verification required.
+                  Staff account (Officer/Admin) will be created in Firebase Authentication and Firestore immediately. They can sign in with this email + password — no email verification required. This action will be logged in the audit trail.
                 </p>
               </div>
             )}

@@ -59,10 +59,11 @@ function OfficerAuditTrailPage() {
     }
   }
 
-  // Officer-specific actions
+  // Officer-specific actions that should be logged
   const officerActions = [
     "applicant_checked_in",
     "biometrics_captured",
+    "biometrics_failed",
     "test_started",
     "test_passed",
     "test_failed",
@@ -72,6 +73,25 @@ function OfficerAuditTrailPage() {
   ];
 
   const filteredLogs = logs.filter((log) => officerActions.includes(log.action));
+
+  const getDetailsSummary = (log: AuditLog) => {
+    const details: string[] = [];
+    if (log.relatedAppId) {
+      details.push(`App: ${log.relatedAppId.slice(0, 8).toUpperCase()}`);
+    }
+    if (log.details) {
+      if (log.details.passed !== undefined) {
+        details.push(`${log.details.passed ? "Passed" : "Failed"}`);
+      }
+      if (log.details.score !== undefined) {
+        details.push(`Score: ${log.details.score}`);
+      }
+      if (log.details.comments) {
+        details.push(log.details.comments.substring(0, 40));
+      }
+    }
+    return details.length > 0 ? details.join(" • ") : "—";
+  };
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-10">
@@ -169,15 +189,7 @@ function OfficerAuditTrailPage() {
                       {log.relatedAppId ? log.relatedAppId.slice(0, 8).toUpperCase() : "—"}
                     </td>
                     <td className="p-3 pr-4 text-xs text-muted-foreground">
-                      {log.details && Object.keys(log.details).length > 0 ? (
-                        <span>
-                          {log.details.passed !== undefined && `${log.details.passed ? "Passed" : "Failed"}`}
-                          {log.details.score !== undefined && ` • Score: ${log.details.score}`}
-                          {log.details.comments && ` • ${log.details.comments.substring(0, 30)}...`}
-                        </span>
-                      ) : (
-                        "—"
-                      )}
+                      {getDetailsSummary(log)}
                     </td>
                   </tr>
                 ))}

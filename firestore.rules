@@ -85,7 +85,13 @@ service cloud.firestore {
       allow read: if isOfficer()
         && resource.data.userId == request.auth.uid;
       
+      // Applicants can only read audit logs they created (login/logout events)
+      allow read: if request.auth != null
+        && !isStaff()
+        && resource.data.userId == request.auth.uid;
+      
       // Any authenticated user can create audit logs for their own actions
+      // Admins can also log actions with specific details (e.g., user_created, user_updated)
       allow create: if isSignedIn()
         && request.resource.data.userId == request.auth.uid;
       
