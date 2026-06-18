@@ -197,7 +197,7 @@ export function IDCameraCapture({
         <CardHeader>
           <CardTitle>Review Your ID Photos</CardTitle>
           <CardDescription>
-            Verify that both photos are clear and readable before proceeding.
+            ✓ Both photos captured successfully. Review them below and ensure they're clear and readable before uploading.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -207,7 +207,7 @@ export function IDCameraCapture({
               <img
                 src={frontCapture}
                 alt="ID Front"
-                className="h-48 w-full rounded-lg object-cover"
+                className="h-56 w-full rounded-lg object-cover border-2 border-primary/20"
               />
               <Button
                 variant="outline"
@@ -224,7 +224,7 @@ export function IDCameraCapture({
               <img
                 src={backCapture}
                 alt="ID Back"
-                className="h-48 w-full rounded-lg object-cover"
+                className="h-56 w-full rounded-lg object-cover border-2 border-primary/20"
               />
               <Button
                 variant="outline"
