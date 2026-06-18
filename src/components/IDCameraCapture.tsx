@@ -34,6 +34,7 @@ export function IDCameraCapture({
   const [frontCapture, setFrontCapture] = useState<string | null>(null);
   const [backCapture, setBackCapture] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadSuccess, setUploadSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cameraReady, setCameraReady] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
@@ -110,6 +111,11 @@ export function IDCameraCapture({
       );
 
       toast.success("ID photos uploaded successfully");
+      
+      // Keep the captures in state so they can be displayed
+      setIsUploading(false);
+      setUploadSuccess(true);
+      
       onCapturesComplete({
         frontUrl: frontResult.downloadUrl,
         backUrl: backResult.downloadUrl,
@@ -128,10 +134,12 @@ export function IDCameraCapture({
       setFrontCapture(null);
       setCaptureState("front");
       setError(null);
+      setUploadSuccess(false);
     } else if (side === "back") {
       setBackCapture(null);
       setCaptureState("back");
       setError(null);
+      setUploadSuccess(false);
     }
   };
 
@@ -140,29 +148,30 @@ export function IDCameraCapture({
     setBackCapture(null);
     setCaptureState("front");
     setError(null);
+    setUploadSuccess(false);
   };
 
-  if (isUploaded) {
+  if (isUploaded || uploadSuccess) {
     return (
       <Card className="w-full border-success/40 bg-success/5">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Check className="h-5 w-5 text-success" />
-            ID Photos Captured
+            ID Photos Captured & Uploaded
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground mb-4">
             Your South African ID photos have been successfully captured and uploaded.
           </p>
-          <div className="mt-4 grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-4">
             {frontCapture && (
               <div className="space-y-2">
                 <p className="text-xs font-medium">Front Photo</p>
                 <img
                   src={frontCapture}
                   alt="ID Front"
-                  className="h-40 w-full rounded-lg object-cover"
+                  className="h-48 w-full rounded-lg object-cover border border-success/20"
                 />
               </div>
             )}
@@ -172,7 +181,7 @@ export function IDCameraCapture({
                 <img
                   src={backCapture}
                   alt="ID Back"
-                  className="h-40 w-full rounded-lg object-cover"
+                  className="h-48 w-full rounded-lg object-cover border border-success/20"
                 />
               </div>
             )}
